@@ -1,0 +1,1752 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنگ مدرن</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#e9e8df;--edge:#435044}
+*{box-sizing:border-box}
+body{margin:0;width:100%;color:var(--ink);font-family:'Vazirmatn','DM Sans',Tahoma,sans-serif}
+button,select,input{font-family:inherit}
+.app-shell{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 10%,#39493b 0%,transparent 36%),linear-gradient(145deg,#19251f,#101a19 65%,#283127)}
+.panel{background:#202d27;border:1px solid var(--edge);box-shadow:0 12px 35px #0a120f45}
+.resource{background:#304036;border:1px solid #4a5c49;border-radius:12px;padding:8px 11px;white-space:nowrap}
+.board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;direction:ltr;width:100%;max-width:390px;margin-inline:auto}
+.tile{aspect-ratio:1;min-width:0;border:1px solid #ffffff25;border-radius:5px;background:linear-gradient(145deg,#9a8060,#73624b);color:#17251d;display:grid;place-items:center;font-size:clamp(13px,4vw,24px);font-weight:700;touch-action:manipulation;cursor:pointer}
+.tile:nth-child(3n){background:linear-gradient(140deg,#a18b69,#806a4d)}
+.tile:hover{filter:brightness(1.15)}
+.tile.fog{background:repeating-linear-gradient(35deg,#444f49,#444f49 7px,#3e4844 7px,#3e4844 14px);color:#e1d8c8}
+.tile.hit{background:#c3714a!important;color:white}
+.tile.miss{background:#636b62!important;color:#d4ded4}
+.tile.ruin{background:#583d35!important;color:#ffd5ad}
+.tile.picked{outline:3px solid #ffd37d;outline-offset:-4px}
+.tile.own-damage{box-shadow:inset 0 0 0 3px #ee915c}
+.choice{background:#304036;color:var(--ink);border:1px solid #536252;border-radius:11px;padding:10px;text-align:right;min-height:62px;cursor:pointer;transition:transform .15s,filter .15s}
+.choice:hover{transform:translateY(-2px);filter:brightness(1.13)}
+.choice.selected{border-color:#f0bb6b;box-shadow:0 0 0 1px #f0bb6b}
+.choice small{display:block;opacity:.85;margin-top:4px;line-height:1.4}
+.action{background:#3f5646;color:var(--ink);border:1px solid #65745f;border-radius:9px;padding:9px 12px;min-height:42px;cursor:pointer}
+.action:hover{filter:brightness(1.2)}
+.log-line{border-bottom:1px solid #ffffff18;padding:7px 0;margin:0}
+button:focus-visible,select:focus-visible{outline:3px solid #f3bc6b;outline-offset:2px}
+[hidden]{display:none!important}
+.tile.blocked{background:#4a6a8a!important;color:#fff}
+.tile.scouted{outline:2px dashed #ffd37d;outline-offset:-4px}
+.choice.locked{opacity:.5}
+.choice small.fx{color:#f0d79a;font-size:11px}
+.inline-block{display:inline-block}
+textarea{font-family:monospace}
+#log{max-height:340px;overflow-y:auto}
+.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.gap-1{gap:.25rem}
+.choice[data-kind="weapon"]{min-height:46px;padding:5px 6px;font-size:12px;line-height:1.3;border-radius:9px}
+.choice[data-kind="weapon"] small{font-size:10.5px;margin-top:2px}
+.choice[data-kind="weapon"] small.fx{display:none}
+.chip{background:#304036;color:var(--ink);border:1px solid #536252;border-radius:999px;padding:4px 9px;font-size:12px;cursor:pointer}
+.chip.active{border-color:#f0bb6b;background:#3f5646}
+.toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:50;
+ width:max-content;max-width:min(520px,calc(100vw - 24px));background:#1f2c25;border:1px solid #f0bb6b;color:var(--ink);
+ padding:10px 14px;border-radius:12px;box-shadow:0 12px 30px #000a;font-size:13px;line-height:1.7;white-space:pre-line;cursor:pointer}
+.tile{position:relative}
+.tile[data-pips]::after{content:attr(data-pips);position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:7px;letter-spacing:1px;line-height:1;color:#17251d}
+@keyframes flash{0%{transform:scale(1);filter:brightness(2.2)}50%{transform:scale(1.2)}100%{transform:scale(1);filter:none}}
+.tile.flash{animation:flash .5s}.tile.ruin.flash{animation-duration:.9s}
+.modal{position:fixed;inset:0;background:#000b;display:grid;place-items:center;z-index:60}
+.modal-box{background:#202d27;border:1px solid #f0bb6b;border-radius:16px;padding:20px;width:min(380px,calc(100vw - 24px));text-align:center}
+.text-2xl{font-size:1.5rem;line-height:2rem}
+.action.active{border-color:#f0bb6b;box-shadow:0 0 0 1px #f0bb6b}
+/* ===== جایگزین Tailwind: استایل‌های ساده ===== */
+html{line-height:1.5;-webkit-text-size-adjust:100%}
+h1,h2,p{margin:0}h1,h2{font-size:inherit;font-weight:inherit}
+button,select,input{font-size:100%;color:inherit;margin:0}
+button{background:none;border:0;padding:0}
+b{font-weight:700}
+.block{display:block}.flex{display:flex}.grid{display:grid}.fixed{position:fixed}
+.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}
+.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}
+.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}
+.space-y-4>*+*{margin-top:1rem}
+.mx-auto{margin-inline:auto}.max-w-5xl{max-width:64rem}.w-full{width:100%}.min-w-0{min-width:0}.min-h-6{min-height:1.5rem}
+.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}
+.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}
+.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}
+.rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}
+.border{border:1px solid}.bg-field{background:#304036}.border-field{border-color:#65745f}
+.shadow-xl{box-shadow:0 20px 25px -5px #0006,0 8px 10px -6px #0006}
+.shadow-2xl{box-shadow:0 25px 50px -12px #000a}
+.text-white{color:#fff}.text-amber-200{color:#fde68a}.text-amber-300{color:#fcd34d}
+.text-stone-200{color:#e7e5e4}.text-stone-300{color:#d6d3d1}
+.text-xs{font-size:.75rem;line-height:1rem}.text-sm{font-size:.875rem;line-height:1.25rem}
+.text-lg{font-size:1.125rem;line-height:1.75rem}.text-xl{font-size:1.25rem;line-height:1.75rem}
+.text-3xl{font-size:1.875rem;line-height:2.25rem}
+.font-bold{font-weight:700}.tracking-widest{letter-spacing:.1em}.leading-7{line-height:1.75rem}
+.accent-amber-400{accent-color:#fbbf24}
+.bottom-3{bottom:.75rem}.left-3{left:.75rem}.z-20{z-index:20}
+.quick-wrap{max-width:min(280px,calc(100vw - 24px))}
+.layout-grid{grid-template-columns:minmax(0,1fr)}
+@media (min-width:640px){.sp-4{padding:1rem}.sp-5{padding:1.25rem}.sp-6{padding:1.5rem}}
+@media (min-width:1024px){.layout-grid{grid-template-columns:minmax(0,1fr) 290px}}
+
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.shake{animation:shk .45s}
+@keyframes pfx{from{opacity:1;transform:translate(0,0) scale(.6)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.6)}}
+.pfx{position:fixed;z-index:60;pointer-events:none;font-size:20px;animation:pfx .9s ease-out forwards}
+@keyframes tpop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+.tile.flash{animation:tpop .5s}
+@media (prefers-reduced-motion:reduce){.shake,.tile.flash{animation:none}.pfx{display:none}}
+</style>
+</head>
+<body class="w-full">
+<div class="app-shell w-full p-3 sp-6">
+ <header id="top" class="max-w-5xl mx-auto flex flex-wrap gap-4 justify-between items-center mb-5">
+  <div>
+   <p class="tracking-widest mb-1 text-amber-300 text-sm">نبرد استراتژیک</p>
+   <h1 class="font-bold text-3xl">جنگ مدرن</h1>
+   <p class="mt-1 text-stone-300">ساختمان بساز، منابع جمع کن و پایگاه ربات را بزن</p>
+   <p class="mt-2 text-sm">شناسهٔ بازیکن: <b id="player-id" dir="ltr"></b></p>
+   <p id="level-info" class="mt-2 text-sm text-amber-200"></p>
+   <p id="pop-info" class="mt-1 text-sm"></p>
+   <p id="country-clock" class="mt-1 text-xs text-stone-300"></p>
+   <p id="country-info" class="mt-2 text-sm text-amber-200"></p>
+   <p id="record-info" class="mt-1 text-xs text-stone-300"></p>
+  </div>
+  <nav aria-label="کنترل‌های بازی" class="flex flex-wrap items-center gap-2">
+   <label for="country">کشور:</label>
+   <select id="country" class="rounded-lg bg-field border border-field text-white p-2"></select>
+   <label for="difficulty">سختی:</label>
+   <select id="difficulty" class="rounded-lg bg-field border border-field text-white p-2">
+    <option value="easy">آسان</option><option value="normal" selected>متوسط</option><option value="hard">سخت</option><option value="expert">فرمانده</option><option value="legendary">افسانه‌ای</option>
+   </select>
+   <button id="restart-button" type="button" class="action">نبرد جدید</button>
+   <button id="help-button" type="button" class="action">راهنما</button>
+   <button id="save-button" type="button" class="action">ذخیره</button>
+   <button id="load-button" type="button" class="action">بارگذاری</button>
+   <button id="net-button" type="button" class="action">دو نفره 🤝 · درحال ساخت</button>
+   <button id="surrender-button" type="button" class="action">تسلیم</button>
+   <button id="gift-button" type="button" class="action">هدیه 🎁</button>
+  </nav>
+ </header>
+ <section id="help-panel" class="panel rounded-2xl p-4 mb-4 max-w-5xl mx-auto text-sm leading-7" hidden>
+  <h2 class="font-bold text-lg mb-2">چطور بازی کنم؟</h2>
+  <p style="white-space:pre-line">🎯 هدف: با سلاح‌ها به خانه‌های زمین ربات ضربه بزنید تا به سقف اصابت برسید (۶ آسان، ۸ متوسط، ۱۰ سخت، ۱۲ فرمانده، ۱۴ افسانه‌ای).
+💰 درآمد: فقط با یک خانه و یک کارخانهٔ سالم، ساختمان‌های درآمدزا هر نوبت منابع می‌دهند.
+🏗️ ساخت: ساختمان را انتخاب و روی خانهٔ خالی زمین خودتان بزنید. «چینش» جای ساختمان‌ها را عوض می‌کند.
+🚀 سلاح‌ها: در تب‌ها دسته‌بندی شده‌اند. هر سلاح به یک ساختمان سالم نیاز دارد، مثلاً موشک به مقر فرماندهی.
+🕵️ مخفی بودن: مکان ساختمان‌های دشمن فقط با تخریب (یا شناسایی برج دیده‌بانی و جنگ الکترونیک) معلوم می‌شود.
+🛡️ دفاع: سنگر ضربهٔ خانه‌های مجاور را جذب می‌کند، پدافند هوایی موشک و پهپاد و هواپیما را رد می‌کند و بیمارستان ترمیم می‌کند.
+🔧 تعمیر و ارتقا: با دکمه‌های «تعمیر» و «ارتقا» ساختمان خودتان را ترمیم یا قوی‌تر کنید (ارتقا تا ۲ اچ‌پی اضافه).
+🎲 رویدادها: هر نوبت با احتمال کم اتفاقی می‌افتد (مه غلیظ، تعمیرات اضطراری، شناسایی ماهواره‌ای).
+🏅 رکوردها: بردها، باخت‌ها، بهترین امتیاز و دستاوردها در همین مرورگر ذخیره می‌شود.
+🌍 کشور: هر کشور سلاح و اقتصاد مخصوص خودش را دارد. با کلیک روی هر ساختمان یا سلاح، توضیح کوتاهش بالای صفحه می‌آید.
+🤝 دو نفره: فعلاً متوقف است و با برچسب «درحال ساخت» نمایش داده می‌شود. در این حالت ربات وجود ندارد: اول هر دو چیدمان می‌کنید و «آماده‌ام» را می‌زنید، بعد نوبتی (هر نوبت ۶۰ ثانیه) می‌جنگید و سقف اصابت ۸ است.
+⭐ سطح: با ساخت، حمله و پیروزی امتیاز تجربه می‌گیرید و با هر سطح جدید منابع جایزه می‌گیرید.
+👥 شهروندان: حمله به ساختمان‌های پررفت‌وآمد (خانه، کارخانه، بیمارستان، رستوران، معدن، انبار، چاه نفت، مقر) شهروندان شما را کم می‌کند؛ هر نفر فقط جمعیت خودش را می‌بیند.
+🎁 هدیه: ارسال کددار منابع و کد ویژهٔ 1010 (۵ دقیقه دارایی نامحدود، ۳ بار در هر ۲ ساعت).
+🕒 ساعت و تاریخ کشور انتخابی بالای صفحه نشان داده می‌شود.</p>
+ </section>
+ <section id="save-panel" class="panel rounded-2xl p-4 mb-4 max-w-5xl mx-auto" hidden>
+  <h2 class="font-bold text-lg mb-2">ذخیره و بارگذاری</h2>
+  <p class="text-sm text-stone-300 mb-3">فایل ذخیره را انتخاب کنید، یا «کد ذخیره» را در کادر بچسبانید. بازی هم خودکار در همین مرورگر ذخیره می‌شود.</p>
+  <label class="action inline-block mb-3">انتخاب فایل ذخیره <input id="load-file" type="file" class="sr-only"></label>
+  <textarea id="save-text" dir="ltr" rows="4" class="w-full rounded-lg bg-field border border-field text-white p-2 text-xs" placeholder="کد ذخیره اینجا قرار می‌گیرد یا بچسبانید"></textarea>
+  <div class="flex flex-wrap gap-2 mt-3">
+   <button id="load-text-button" type="button" class="action">بارگذاری از کد</button>
+   <button id="copy-save-button" type="button" class="action">گرفتن و کپی کد ذخیره</button>
+   <button id="autoload-button" type="button" class="action">ادامهٔ آخرین ذخیرهٔ خودکار</button>
+   <button id="reset-records" type="button" class="action">پاک‌کردن رکوردها</button>
+   <button id="close-save" type="button" class="action">بستن</button>
+  </div>
+ </section>
+ <section id="net-panel" class="panel rounded-2xl p-4 mb-4 max-w-5xl mx-auto text-sm leading-7" hidden>
+  <h2 class="font-bold text-lg mb-2">بازی دو نفره</h2>
+  <p class="text-stone-300 mb-3">هر دو گوشی باید به اینترنت وصل باشند (هات‌اسپات هم مشکلی ندارد). نفر اول «ساخت بازی» را می‌زند و کد پنج رقمی را به نفر دوم می‌گوید؛ نفر دوم کد را می‌نویسد و «پیوستن» می‌زند.</p>
+  <label class="block text-xs mb-1" for="net-name">نام شما (حریف می‌بیند)</label>
+  <input id="net-name" maxlength="16" class="rounded-lg bg-field border border-field text-white p-2 mb-3" placeholder="مثلاً علی">
+  <div class="flex flex-wrap items-center gap-2 mb-3">
+   <button id="net-code-host" type="button" class="action">ساخت بازی</button>
+   <span class="resource">کد شما: <b id="net-code" dir="ltr" class="text-xl">----</b></span>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+   <input id="net-code-in" dir="ltr" inputmode="numeric" maxlength="5" class="rounded-lg bg-field border border-field text-white p-2" style="width:7rem" placeholder="۵ رقم">
+   <button id="net-code-join" type="button" class="action">پیوستن</button>
+   <button id="net-close" type="button" class="action">بستن</button>
+  </div>
+  <p id="net-status" role="status" aria-live="polite" class="mt-3 text-amber-200 min-h-6"></p>
+  <details id="net-details" class="mt-3"><summary class="cursor-pointer text-stone-300">بدون اینترنت (کد کوتاه، دستی)</summary>
+   <p class="text-stone-300 my-2">نفر اول «ساخت بازی دستی» را بزند و کد را برای نفر دوم بفرستد. نفر دوم کد را در کادر پایین بچسباند و «پیوستن دستی» بزند و کد پاسخ را برگرداند. نفر اول آن را بچسباند و «اتصال» بزند.</p>
+   <label class="block text-xs mb-1" for="net-out">کد شما</label>
+   <textarea id="net-out" dir="ltr" rows="3" readonly class="w-full rounded-lg bg-field border border-field text-white p-2 text-xs"></textarea>
+   <button id="net-copy" type="button" class="action mt-2">کپی کد</button>
+   <label class="block text-xs mt-3 mb-1" for="net-in">کد دوست</label>
+   <textarea id="net-in" dir="ltr" rows="3" class="w-full rounded-lg bg-field border border-field text-white p-2 text-xs"></textarea>
+   <div class="flex flex-wrap gap-2 mt-3">
+    <button id="net-host" type="button" class="action">ساخت بازی دستی</button>
+    <button id="net-connect" type="button" class="action">اتصال</button>
+    <button id="net-join" type="button" class="action">پیوستن دستی</button>
+   </div>
+  </details>
+ </section>
+ <section id="gift-panel" class="panel rounded-2xl p-4 mb-4 max-w-5xl mx-auto text-sm leading-7" hidden>
+  <h2 class="font-bold text-lg mb-2">🎁 هدیه دادن منابع</h2>
+  <p class="text-stone-300 mb-2">هر واحدی که می‌فرستید حداقل ۱۰۰ باشد (واحدی که نمی‌خواهید بفرستید را خالی بگذارید). کد هدیه را خودتان برای دوستتان بفرستید؛ فقط با کد کاربر او باز می‌شود. کد کاربر شما بالای صفحه نوشته شده است.</p>
+  <label class="block text-xs mb-1" for="gift-to">کد کاربر گیرنده</label>
+  <input id="gift-to" dir="ltr" class="rounded-lg bg-field border border-field text-white p-2 mb-2" placeholder="JM-XXXXXXXX">
+  <div class="flex flex-wrap gap-2 mb-2"><input id="gift-gold" type="number" min="0" inputmode="numeric" class="rounded-lg bg-field border border-field text-white p-2" style="width:6.5rem" placeholder="طلا"><input id="gift-wood" type="number" min="0" inputmode="numeric" class="rounded-lg bg-field border border-field text-white p-2" style="width:6.5rem" placeholder="چوب"><input id="gift-stone" type="number" min="0" inputmode="numeric" class="rounded-lg bg-field border border-field text-white p-2" style="width:6.5rem" placeholder="سنگ"><input id="gift-metal" type="number" min="0" inputmode="numeric" class="rounded-lg bg-field border border-field text-white p-2" style="width:6.5rem" placeholder="فلز"><input id="gift-fuel" type="number" min="0" inputmode="numeric" class="rounded-lg bg-field border border-field text-white p-2" style="width:6.5rem" placeholder="سوخت"></div>
+  <button id="gift-make" type="button" class="action">ساخت کد هدیه</button>
+  <textarea id="gift-code" dir="ltr" rows="2" readonly class="w-full rounded-lg bg-field border border-field text-white p-2 text-xs mt-2"></textarea>
+  <button id="gift-copy" type="button" class="action mt-2">کپی کد هدیه</button>
+  <label class="block text-xs mt-3 mb-1" for="gift-in">دریافت هدیه: کد هدیه‌ای که برایتان فرستاده‌اند</label>
+  <textarea id="gift-in" dir="ltr" rows="2" class="w-full rounded-lg bg-field border border-field text-white p-2 text-xs"></textarea>
+  <div class="flex flex-wrap gap-2 mt-2"><button id="gift-redeem" type="button" class="action">دریافت هدیه</button><button id="gift-close" type="button" class="action">بستن</button></div>
+  <div class="panel rounded-xl p-3 mt-4"><h3 class="font-bold mb-2">🔐 کد هدیه ویژه</h3><p class="text-stone-300 mb-2">رمز 1010: دارایی‌های نامحدود به مدت ۵ دقیقه؛ حداکثر ۳ بار در هر بازهٔ ۲ ساعته.</p><div class="flex flex-wrap gap-2"><input id="bonus-code" type="password" inputmode="numeric" maxlength="4" placeholder="رمز چهاررقمی" class="rounded-lg bg-field border border-field text-white p-2"><button id="bonus-activate" type="button" class="action">فعال‌سازی</button></div><p id="bonus-status" class="mt-2 text-amber-200" role="status" aria-live="polite"></p></div><p id="gift-status" role="status" aria-live="polite" class="mt-3 text-amber-200 min-h-6"></p>
+ </section>
+ <main class="max-w-5xl mx-auto">
+  <section class="panel rounded-2xl p-3 sp-4 mb-4" aria-label="وضعیت نبرد">
+   <div class="flex flex-wrap gap-2 items-center">
+    <span class="resource">🪙 طلا <b id="gold"></b></span>
+    <span class="resource">🪵 چوب <b id="wood"></b></span>
+    <span class="resource">🪨 سنگ <b id="stone"></b></span>
+    <span class="resource">⚙️ فلز <b id="metal"></b></span>
+    <span class="resource">⛽ سوخت <b id="fuel"></b></span>
+    <span class="resource">💼 درآمد منابع <b id="econ"></b></span>
+    <span class="resource">🎯 اصابت شما <b id="score"></b></span>
+    <span class="resource">🛡️ اصابت ربات <b id="enemy-score"></b></span>
+   </div>
+   <p id="status" role="status" aria-live="polite" class="mt-3 text-amber-200 min-h-6"></p>
+   <div id="net-bar" class="flex flex-wrap gap-2 items-center mt-3" hidden><span id="net-turn" class="resource"></span><button id="net-ready" type="button" class="action">آماده‌ام ✅</button><span id="net-chat" class="flex flex-wrap gap-1"></span><button id="net-leave" type="button" class="action">خروج از بازی دو نفره</button></div>
+  </section>
+  <div class="grid layout-grid gap-4 items-start">
+   <div class="space-y-4 min-w-0">
+    <section id="enemy-section" class="panel rounded-2xl p-3 sp-5">
+     <h2 id="enemy-title" class="font-bold text-xl mb-1">زمین ربات</h2>
+     <p class="mb-4 text-stone-300">یک سلاح انتخاب کنید و خانه‌ای را هدف بگیرید. رسیدن به سقف اصابت (بسته به سختی) یعنی پیروزی.</p>
+     <div id="enemy-board" class="board" role="group" aria-label="زمین ربات"></div>
+    </section>
+    <section id="player-section" class="panel rounded-2xl p-3 sp-5">
+     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div>
+       <h2 class="font-bold text-xl mb-1">زمین شما</h2>
+       <p class="text-stone-300">ساختمان بسازید یا با «چینش» جابه‌جا کنید.</p>
+      </div>
+      <div class="flex gap-2">
+       <button id="move-button" type="button" class="action">چینش</button>
+       <button id="repair-button" type="button" class="action">تعمیر</button>
+       <button id="upgrade-button" type="button" class="action">ارتقا</button>
+       <button id="cancel-move-button" type="button" class="action" hidden>پایان چینش</button>
+      </div>
+     </div>
+     <div id="player-board" class="board" role="group" aria-label="زمین شما"></div>
+     <p class="mt-3 text-stone-300 text-sm">ساختمان را انتخاب کنید و خانهٔ خالی را لمس کنید.</p>
+    </section>
+   </div>
+   <aside class="space-y-4">
+    <section id="buildings-section" class="panel rounded-2xl p-4">
+     <h2 class="font-bold text-lg mb-2">ساختمان‌ها</h2>
+     <p class="mb-3 text-stone-300 text-sm">هر ساختمان هزینه و درآمد مخصوص خود را دارد.</p>
+     <div class="grid grid-cols-2 gap-2">
+      <button type="button" class="choice" data-kind="building" data-key="base"><span>مقر فرماندهی</span><small>🪙 ۶ · 🪵 ۴ · 🪨 ۴</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="tower"><span>برج دیده‌بانی</span><small>🪙 ۳ · 🪵 ۳</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="bunker"><span>سنگر</span><small>🪨 ۴ · ⚙️ ۲</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="house"><span>خانه</span><small>🪙 ۳ · 🪵 ۳</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="restaurant"><span>رستوران</span><small>🪙 ۴ · 🪵 ۳</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="hospital"><span>بیمارستان</span><small>🪙 ۵ · 🪨 ۳</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="factory"><span>کارخانه</span><small>🪙 ۵ · 🪨 ۳</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="mine"><span>معدن</span><small>🪵 ۳ · 🪨 ۲</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="depot"><span>انبار چوب</span><small>🪵 ۳ · 🪨 ۲</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="oil"><span>چاه نفت</span><small>🪙 ۴ · ⚙️ ۲</small></button><button type="button" class="choice" data-kind="building" data-key="solar"><span>نیروگاه خورشیدی ☀️</span><small>تولید سوخت/انرژی</small></button><button type="button" class="choice" data-kind="building" data-key="lab"><span>آزمایشگاه فناوری 🧪</span><small>پشتیبانی ارتقا</small></button><button type="button" class="choice" data-kind="building" data-key="radar"><span>رادار پیشرفته 📡</span><small>شناسایی بهتر</small></button>
+      <button type="button" class="choice" data-kind="building" data-key="defense"><span>پدافند هوایی</span><small>🪙 ۴ · ⚙️ ۲</small></button>
+     </div>
+    </section>
+    <section id="weapons-section" class="panel rounded-2xl p-4">
+     <h2 class="font-bold text-lg mb-2">سلاح‌ها</h2>
+     <p class="mb-3 text-stone-300 text-sm">سلاح را انتخاب و زمین ربات را هدف بگیرید.</p>
+     <div id="weapon-tabs" class="flex flex-wrap gap-1 mb-2"></div>
+     <div id="weapon-list" class="grid grid-cols-2 gap-1"></div>
+    </section>
+   </aside>
+  </div>
+  <section class="panel rounded-2xl p-4 mt-4">
+   <h2 class="font-bold text-lg mb-2">گزارش</h2>
+   <div id="log" aria-live="polite" class="text-sm text-stone-200"></div>
+  </section>
+  <section id="creator-box" class="panel rounded-2xl p-4 mt-4 text-sm leading-7"><h2 class="font-bold text-lg mb-2 text-amber-300">اطلاعات سازنده</h2><p>نسخهٔ توسعه‌یافتهٔ بازی جنگ مدرن</p><p class="text-stone-300">برای حفظ حریم خصوصی، اطلاعات شخصی از این بخش حذف شده است.</p></section>
+ </main>
+ <div id="end-modal" class="modal" hidden><div class="modal-box">
+  <h2 id="end-title" class="font-bold text-2xl mb-3"></h2>
+  <p id="end-stats" style="white-space:pre-line" class="mb-4 leading-8"></p>
+  <button id="end-restart" type="button" class="action">نبرد جدید</button> <button id="end-share" type="button" class="action">کپی نتیجه</button> <button id="end-close" type="button" class="action">بستن</button>
+ </div></div>
+ <div id="info-toast" class="toast" role="status" aria-live="polite" hidden></div>
+ <div class="fixed bottom-3 left-3 z-20 flex flex-col items-start gap-2 quick-wrap">
+  <button id="quick-open" type="button" class="action shadow-xl">منوی سریع</button>
+  <nav id="quick-menu" aria-label="منوی سریع" class="panel rounded-xl p-3 w-full shadow-2xl" hidden>
+   <div class="flex justify-between items-center gap-2 mb-2">
+    <h2 class="font-bold">منوی سریع</h2>
+    <button id="quick-close" type="button" class="action">بستن</button>
+   </div>
+   <div class="grid grid-cols-2 gap-2 mb-3">
+    <button type="button" data-go="player-section" class="action">زمین شما</button>
+    <button type="button" data-go="enemy-section" class="action">زمین ربات</button>
+    <button type="button" data-go="weapons-section" class="action">سلاح‌ها</button>
+    <button type="button" data-go="top" class="action">بالا</button>
+   </div>
+   <p id="track-name" class="text-sm mb-2" aria-live="polite"></p>
+   <label class="text-xs block mb-3">صدا <input id="music-volume" type="range" min="0" max="100" value="60" class="w-full accent-amber-400"></label>
+   <div class="grid grid-cols-2 gap-2">
+    <button id="music-play" type="button" class="action">پخش</button>
+    <button id="music-stop" type="button" class="action">توقف</button>
+    <button id="music-prev" type="button" class="action">قبلی</button>
+    <button id="music-next" type="button" class="action">بعدی</button>
+    <button id="sfx-toggle" type="button" class="action">افکت: روشن</button>
+   </div>
+  </nav>
+ </div>
+</div>
+<script>
+(() => {
+  const SIZE=8, COUNT=64, $=id=>document.getElementById(id);
+  const fa=n=>Number(n).toLocaleString('fa-IR');
+  const resourceNames={gold:'طلا',wood:'چوب',stone:'سنگ',metal:'فلز',fuel:'سوخت'};
+  const initialResources={gold:750,wood:750,stone:750,metal:750,fuel:750};
+  const buildings={
+    base:{name:'مقر فرماندهی',icon:'🏛️',hp:2,cost:{gold:6,wood:4,stone:4},info:'مرکز فرماندهی؛ درآمد اختصاصی ندارد.'},
+    tower:{name:'برج دیده‌بانی',icon:'📡',hp:1,cost:{gold:3,wood:3},info:'ساختمان دفاعی؛ درآمد اختصاصی ندارد.'},
+    bunker:{name:'سنگر',icon:'🛡️',hp:2,cost:{stone:4,metal:2},info:'موضع دفاعی مقاوم؛ درآمد اختصاصی ندارد.'},
+    house:{name:'خانه',icon:'🏠',hp:1,cost:{gold:3,wood:3},income:{gold:1},info:'هر نوبت ۱ طلا درآمد دارد (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    restaurant:{name:'رستوران',icon:'🍽️',hp:1,cost:{gold:4,wood:3},income:{gold:2},info:'هر نوبت ۲ طلا درآمد دارد (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    hospital:{name:'بیمارستان',icon:'🏥',hp:2,cost:{gold:5,stone:3},income:{gold:2},info:'هر نوبت ۲ طلا درآمد دارد (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    factory:{name:'کارخانه',icon:'🏭',hp:2,cost:{gold:5,stone:3},income:{metal:2},info:'هر نوبت ۲ فلز تولید می‌کند (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    mine:{name:'معدن',icon:'⛏️',hp:1,cost:{wood:3,stone:2},income:{stone:2,metal:1},info:'هر نوبت ۲ سنگ و ۱ فلز تولید می‌کند (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    depot:{name:'انبار چوب',icon:'📦',hp:1,cost:{wood:3,stone:2},income:{wood:2},info:'هر نوبت ۲ چوب تولید می‌کند (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    defense:{name:'پدافند هوایی',icon:'🛰️',hp:2,cost:{gold:4,metal:2},info:'ساختمان دفاعی؛ درآمد اختصاصی ندارد.'},
+    oil:{name:'چاه نفت',icon:'🛢️',hp:1,cost:{gold:4,metal:2},income:{fuel:2},info:'هر نوبت ۲ سوخت تولید می‌کند (فقط با داشتن خانه و کارخانهٔ سالم).'},
+    solar:{name:'نیروگاه خورشیدی',icon:'☀️',hp:2,cost:{gold:7,metal:5,stone:4},income:{fuel:1},info:'تولید پایدار سوخت در هر نوبت.'},
+    lab:{name:'آزمایشگاه فناوری',icon:'🧪',hp:2,cost:{gold:9,metal:7,stone:5},income:{metal:1},info:'درآمد فلز و پشتیبانی فناوری.'},
+    radar:{name:'رادار پیشرفته',icon:'📡',hp:2,cost:{gold:8,metal:6,fuel:3},info:'ساختمان شناسایی پیشرفته.'}
+  };
+  const fxText={
+    base:'تخفیف ۱ طلا روی هزینهٔ هر سلاح · لازم برای موشک',
+    tower:'تقریباً بی‌اثر: هر نوبت فقط با ۱۰٪ احتمال یک ساختمان دشمن را شناسایی می‌کند · لازم برای جنگنده',
+    bunker:'ضربه به خانه‌های مجاور را با ۵۰٪ احتمال جذب می‌کند',
+    house:'شهروند؛ شرط درآمد منابع',
+    restaurant:'',
+    hospital:'هر نوبت یک ساختمان آسیب‌دیده را ترمیم می‌کند',
+    factory:'محل کار شهروندان · لازم برای راکت',
+    mine:'',
+    depot:'',
+    oil:'لازم برای پهپاد',
+    defense:'هر پدافند ۳۵٪ از حملهٔ موشک، پهپاد، جنگنده و بمب‌افکن را رد می‌کند'
+  };
+  Object.keys(fxText).forEach(k=>{buildings[k].fx=fxText[k];buildings[k].key=k});
+  // ضریب قیمت هر کشور (بر پایهٔ ثروت و اقتصاد؛ گران‌ترین قلم ایران = ۱۵۰)
+  const PRICE={iran:34,uk:30,china:28,russia:27,turkey:25,usa:23,germany:29,japan:31,france:28,india:22,brazil:21};
+  const inflate=(c,m)=>Object.fromEntries(Object.entries(c).map(([k,v])=>[k,Math.ceil(v*(m||PRICE[country]||15))]));
+  Object.values(buildings).forEach(b=>{b.base={...b.cost}});
+  const repriceBuildings=()=>Object.values(buildings).forEach(b=>{b.cost=inflate(b.base)});
+  const weapons={};
+  const kindRequires={rocket:'factory',drone:'oil',missile:'base',jet:'tower',mortar:'depot',cluster:'mine',laser:'tower',bomber:'base',ew:'tower'};
+  const CATS={
+    missile:{icon:'🚀',name:'موشک‌ها'},
+    air:{icon:'✈️',name:'هواپیماها'},
+    drone:{icon:'🛸',name:'پهپادها'},
+    artillery:{icon:'💥',name:'توپخانه و راکت'},
+    special:{icon:'🔦',name:'سامانه‌های ویژه'}
+  };
+  // الگوی هر نوع سلاح بر اساس «رده» (۱ سبک، ۲ متوسط، ۳ سنگین)
+  const templates={
+    mortar:[{cost:{gold:1,wood:1}}],
+    rocket:[{cost:{gold:1,metal:1},splash:1},{cost:{gold:1,metal:2},splash:2},{cost:{gold:2,metal:2},splash:3}],
+    cluster:[{cost:{gold:2,stone:1,metal:1},splash:2},{cost:{gold:3,stone:1,metal:1},splash:3},{cost:{gold:3,stone:2,metal:1},splash:4}],
+    missile:[{cost:{gold:2,fuel:1},dmg:2},{cost:{gold:3,metal:1,fuel:1},dmg:2,splash:1},{cost:{gold:4,metal:1,fuel:2},dmg:2,splash:2}],
+    drone:[{cost:{gold:1,fuel:1},redirect:1},{cost:{gold:2,fuel:1},redirect:2},{cost:{gold:3,fuel:2},redirect:3}],
+    jet:[{cost:{gold:2,fuel:2},width:3},{cost:{gold:3,fuel:2},width:3},{cost:{gold:4,fuel:2},width:5}],
+    bomber:[{cost:{gold:3,fuel:1},width:3},{cost:{gold:4,fuel:2},width:3},{cost:{gold:4,fuel:2},width:5}],
+    laser:[{cost:{gold:3,metal:1,fuel:1}}],
+    ew:[{cost:{gold:3,metal:1,fuel:1},reveal:2}]
+  };
+  // ضریب قدرت (طبق خواستهٔ بازی): ایران قوی‌ترین، آمریکا ضعیف‌ترین
+  const countryPower={iran:{gold:-1,boost:1,fuel:0},usa:{gold:2,boost:-1,fuel:1}};
+  // فهرست سلاح‌های شناخته‌شدهٔ هر کشور: [دسته، نوع رفتار، رده، نام]
+  const arsenal={
+    iran:[
+      ['missile','missile',1,'فاتح-۱۱۰'],['missile','missile',2,'ذوالفقار'],['missile','missile',2,'شهاب-۳'],['missile','missile',3,'خرمشهر'],
+      ['air','jet',2,'اف-۱۴ تامکت'],['air','jet',2,'میگ-۲۹'],['air','bomber',2,'سوخو-۲۴'],['air','bomber',1,'اف-۴ فانتوم'],
+      ['drone','drone',2,'شاهد-۱۳۶'],['drone','drone',3,'شاهد-۱۲۹'],['drone','drone',2,'مهاجر-۶'],['drone','drone',1,'ابابیل-۳'],
+      ['artillery','rocket',2,'فجر-۵'],['artillery','rocket',3,'زلزال-۲'],['artillery','mortar',1,'خمپارهٔ ۱۲۰'],
+      ['special','laser',1,'لیزر (اعلام‌شده)'],['special','ew',1,'جنگ الکترونیک']
+    ],
+    usa:[
+      ['missile','missile',3,'تاماهاوک'],['missile','missile',2,'اتکمز'],['missile','missile',2,'جَسم (JASSM)'],
+      ['air','jet',2,'اف-۱۶'],['air','jet',3,'اف-۳۵'],['air','bomber',3,'بی-۵۲'],['air','bomber',3,'بی-۲'],
+      ['drone','drone',2,'ام‌کیو-۹ ریپر'],['drone','drone',1,'سوئیچ‌بلید'],['drone','drone',2,'گری ایگل'],
+      ['artillery','rocket',3,'هایمارس'],['artillery','rocket',3,'ام-۲۷۰'],['artillery','cluster',2,'سی‌بی‌یو-۸۷'],['artillery','mortar',1,'خمپارهٔ ام-۲۵۲'],
+      ['special','laser',1,'لیزر هلیوس']
+    ],
+    russia:[
+      ['missile','missile',2,'کالیبر'],['missile','missile',2,'ایسکندر-ام'],['missile','missile',3,'کینژال'],['missile','missile',3,'ایکس-۱۰۱'],
+      ['air','jet',3,'سوخو-۳۵'],['air','bomber',2,'سوخو-۳۴'],['air','bomber',3,'تو-۹۵'],['air','bomber',3,'تو-۱۶۰'],
+      ['drone','drone',2,'لانست'],['drone','drone',1,'اورلان-۱۰'],['drone','drone',2,'گِران-۲'],
+      ['artillery','rocket',2,'گراد'],['artillery','rocket',3,'اسمرچ'],['artillery','cluster',3,'تی‌اوس-۱ آ'],['artillery','mortar',1,'تولیپ ۲اس۴'],
+      ['special','laser',1,'پرسوت']
+    ],
+    china:[
+      ['missile','missile',2,'دانگ‌فنگ-۱۵'],['missile','missile',3,'دانگ‌فنگ-۲۱'],['missile','missile',3,'دانگ‌فنگ-۲۶'],['missile','missile',2,'سی‌جی-۱۰'],
+      ['air','jet',3,'جی-۲۰'],['air','jet',2,'جی-۱۰ سی'],['air','bomber',3,'اچ-۶ کا'],
+      ['drone','drone',2,'وینگ‌لونگ ۲'],['drone','drone',2,'سی‌اچ-۴'],['drone','drone',3,'جی‌جی-۱۱'],
+      ['artillery','rocket',2,'پی‌اچ‌ال-۰۳'],['artillery','rocket',3,'پی‌اچ‌ال-۱۶'],['artillery','mortar',1,'خمپارهٔ ۸۲'],
+      ['special','laser',1,'ال‌دبلیو-۳۰']
+    ],
+    turkey:[
+      ['missile','missile',3,'تایفون'],['missile','missile',2,'آتماجا'],['missile','missile',2,'بورا'],['missile','missile',2,'چاکر'],
+      ['air','jet',2,'اف-۱۶'],['air','jet',1,'هورجت'],['air','jet',3,'کان (KAAN)'],
+      ['drone','drone',1,'بایراکتار TB2'],['drone','drone',2,'آکینجی'],['drone','drone',2,'آنکا'],['drone','drone',3,'قزل‌الما'],
+      ['artillery','rocket',2,'تی-۱۲۲ ساکاریا'],['artillery','rocket',2,'تی‌آرجی-۳۰۰ کاپلان'],['artillery','mortar',1,'توپ فیرتینا'],
+      ['special','laser',1,'گوک‌برک']
+    ],
+    uk:[['missile','missile',3,'استورم شدو'],['missile','missile',2,'بریمستون'],['missile','missile',3,'تاماهاوک'],['air','jet',3,'یوروفایتر تایفون'],['air','jet',3,'اف-۳۵ بی'],['drone','drone',1,'واچکیپر'],['drone','drone',2,'ام‌کیو-۹ بی'],['artillery','rocket',3,'ام-۲۷۰ (جی‌ام‌ال‌آر‌اس)'],['artillery','mortar',1,'ای‌اس-۹۰'],['special','laser',1,'دراگون‌فایر']],
+    germany:[['missile','missile',2,'تاوروس'],['air','jet',3,'یوروفایتر'],['drone','drone',2,'هِلینگ'],['artillery','rocket',2,'مارس-۲']],
+    japan:[['missile','missile',2,'Type 12'],['air','jet',3,'F-2'],['drone','drone',2,'پهپاد شناسایی ژاپنی'],['artillery','rocket',2,'سامانه راکتی'],['special','laser',1,'سامانه لیزری']],
+    france:[['missile','missile',3,'اسکالپ'],['air','jet',3,'رافال'],['drone','drone',2,'پاترولر'],['artillery','rocket',2,'راکت‌انداز'],['special','laser',1,'سامانه لیزری']],
+    india:[['missile','missile',3,'براهموس'],['air','jet',3,'تجاس'],['drone','drone',2,'روستوم'],['artillery','rocket',2,'پیناکا']],
+    brazil:[['missile','missile',2,'آو-تی‌ام-۳۰۰'],['air','jet',2,'گریپن'],['drone','drone',1,'پهپاد شناسایی'],['artillery','rocket',2,'آستروس-۲']]
+  };
+  function makeWeapon(kind,spec){
+    const w={kind,requires:kindRequires[kind],dmg:1,splash:0,width:1,redirect:1,reveal:0,...spec};
+    const need=' · لازم: ';
+    w.fx={
+      rocket:`خانهٔ هدف و ${fa(w.splash)} خانهٔ مجاور را می‌زند${need}کارخانه`,
+      drone:`اگر خالی بخورد به ${fa(w.redirect)} ساختمان مجاور می‌رود${need}چاه نفت`,
+      missile:`آسیب ${fa(w.dmg)}${w.splash?' + '+fa(w.splash)+' خانهٔ مجاور':''}${need}مقر فرماندهی`,
+      jet:`${fa(w.width)} خانهٔ هم‌ردیف را می‌زند${need}برج دیده‌بانی`,
+      mortar:`ارزان؛ فقط یک خانه${need}انبار چوب`,
+      cluster:`خانهٔ هدف و تا ${fa(w.splash)} خانهٔ مجاور${need}معدن`,
+      laser:`سنگر ضربه را جذب نمی‌کند${need}برج دیده‌بانی`,
+      bomber:`${fa(w.width)} خانهٔ هم‌ستون را می‌زند${need}مقر فرماندهی`,
+      ew:`ضربهٔ تک‌خانه + شناسایی ${fa(w.reveal)} ساختمان دشمن${need}برج دیده‌بانی`
+    }[kind];
+    return w;
+  }
+  function buildArsenal(c){
+    const pw=countryPower[c]||{gold:0,boost:0,fuel:0};
+    return arsenal[c].map(([cat,kind,tier,name],i)=>{
+      const list=templates[kind],t=list[Math.min(tier,list.length)-1];
+      const spec={...t,cost:{...t.cost},name};
+      spec.cost.gold=Math.max(1,spec.cost.gold+pw.gold);
+      if(spec.cost.fuel)spec.cost.fuel+=pw.fuel;
+      spec.cost=inflate(spec.cost,PRICE[c]);
+      if(spec.splash)spec.splash=Math.max(1,spec.splash+pw.boost);
+      if(spec.redirect)spec.redirect=Math.max(1,spec.redirect+pw.boost);
+      if(spec.reveal)spec.reveal=Math.max(1,spec.reveal+pw.boost);
+      if(spec.width>=3)spec.width=Math.max(3,spec.width+2*pw.boost);
+      const w=makeWeapon(kind,spec);w.id='w'+i;w.cat=cat;return w;
+    });
+  }
+  let weaponCat='missile';
+  const adName={iran:'باور-۳۷۳',usa:'پاتریوت',russia:'اس-۴۰۰',china:'اچ‌کیو-۹',turkey:'حصار',uk:'سی‌وایپر'};
+  function applyWeapons(){
+    buildings.defense.fx=`سامانهٔ ${adName[country]}: هر پدافند ۳۵٪ از حملهٔ موشک، پهپاد، جنگنده و بمب‌افکن را رد می‌کند`;
+    Object.keys(weapons).forEach(k=>delete weapons[k]);
+    buildArsenal(country).forEach(w=>{weapons[w.id]=w});
+    const cats=Object.keys(CATS).filter(c=>Object.values(weapons).some(w=>w.cat===c));
+    if(!cats.includes(weaponCat))weaponCat=cats[0];
+  }
+  const firstWeaponKey=()=>Object.keys(weapons)[0];
+  const countries={
+    iran:{name:'جمهوری اسلامی ایران',flag:'🇮🇷',eco:'قوی‌ترین اقتصاد: همهٔ ساختمان‌ها درآمد بیشتر می‌دهند (چاه نفت ۲ سوخت بیشتر)؛ شروع با منابع فراوان',
+      def:'سنگرها ۷۰٪ ضربه را جذب می‌کنند و هر بیمارستان ۱ ترمیم اضافه می‌دهد',
+      start:{gold:1500,wood:1200,stone:1200,metal:1100,fuel:1200},
+      bonus:{oil:{fuel:2},mine:{stone:1,metal:1},factory:{metal:1},house:{gold:1},restaurant:{gold:1},hospital:{gold:1},depot:{wood:1}}},
+    usa:{name:'آمریکا',flag:'🇺🇸',eco:'ضعیف‌ترین اقتصاد: بدون هیچ بونوس درآمد؛ شروع با منابع کم',
+      start:{gold:750,wood:750,stone:750,metal:750,fuel:750},bonus:{}},
+    russia:{name:'روسیه',flag:'🇷🇺',eco:'منابع زیرزمینی: معدن ۱ سنگ و ۱ فلز و چاه نفت ۱ سوخت بیشتر می‌دهد؛ شروع با ۱٬۳۰۰ سنگ',
+      start:{gold:1000,wood:800,stone:1300,metal:850,fuel:1000},bonus:{mine:{stone:1,metal:1},oil:{fuel:1}}},
+    china:{name:'چین',flag:'🇨🇳',eco:'صنعتی: کارخانه ۲ فلز و انبار چوب ۱ چوب بیشتر می‌دهد؛ شروع با ۱٬۳۰۰ فلز',
+      start:{gold:1100,wood:850,stone:850,metal:1300,fuel:750},bonus:{factory:{metal:2},depot:{wood:1}}},
+    turkey:{name:'ترکیه',flag:'🇹🇷',eco:'بازار و کشاورزی: خانه و رستوران ۱ طلا و انبار چوب ۱ چوب بیشتر می‌دهد',def:'سنگرها ۷۰٪ ضربه را جذب می‌کنند',
+      start:{gold:950,wood:1100,stone:1100,metal:750,fuel:750},bonus:{house:{gold:1},restaurant:{gold:1},depot:{wood:1}}},
+    uk:{name:'انگلیس',flag:'🇬🇧',eco:'خدمات و صنعت: بیمارستان و رستوران ۱ طلا و کارخانه ۱ فلز بیشتر می‌دهد',def:'هر بیمارستان ۱ ترمیم اضافه می‌دهد',start:{gold:1200,wood:900,stone:900,metal:950,fuel:800},bonus:{hospital:{gold:1},restaurant:{gold:1},factory:{metal:1}}},
+    germany:{name:'آلمان',flag:'🇩🇪',eco:'مهندسی: کارخانه‌ها فلز بیشتری تولید می‌کنند',start:{gold:1050,wood:900,stone:1000,metal:1250,fuel:900},bonus:{factory:{metal:2}}},
+    japan:{name:'ژاپن',flag:'🇯🇵',eco:'فناوری: برج دیده‌بانی و بیمارستان کارآمدترند',start:{gold:1100,wood:950,stone:850,metal:1100,fuel:950},bonus:{hospital:{gold:2}}},
+    france:{name:'فرانسه',flag:'🇫🇷',eco:'زیرساخت: رستوران‌ها و خانه‌ها درآمد بیشتری دارند',start:{gold:1150,wood:1000,stone:950,metal:900,fuel:850},bonus:{house:{gold:1},restaurant:{gold:2}}},
+    india:{name:'هند',flag:'🇮🇳',eco:'نیروی انسانی: خانه‌ها و انبارها بازده بیشتری دارند',start:{gold:1000,wood:1250,stone:950,metal:850,fuel:800},bonus:{house:{gold:1},depot:{wood:2}}},
+    brazil:{name:'برزیل',flag:'🇧🇷',eco:'منابع طبیعی: معدن و چاه نفت بازده بیشتری دارند',start:{gold:950,wood:1200,stone:1100,metal:850,fuel:1000},bonus:{mine:{stone:2},oil:{fuel:2}}}
+  };
+  Object.values(countries).forEach(c=>{c.perk=c.eco+(c.def?' · '+c.def:'')});
+  const blank=()=>Array.from({length:COUNT},()=>({type:null,hp:0,attacked:false,blocked:false,scouted:false}));
+  const random=max=>Math.floor(Math.random()*max);
+  const newId=()=> 'JM-'+(globalThis.crypto?.randomUUID?.().slice(0,8).toUpperCase() || (Date.now().toString(36)+Math.random().toString(36).slice(2,6)).toUpperCase());
+  const net={on:false,host:false,myTurn:false,pc:null,ch:null,last:null,rm:false,prm:false,peerCountry:'usa',peerName:'حریف',peer:null,phase:'setup',ready:false,peerReady:false,left:60,timer:null,waiting:false,rx:0,hb:null};
+  let xp=0,lastPop=null;try{xp=Math.max(0,Math.floor(Number(localStorage.getItem('jm-xp'))||0))}catch{}
+  const POP={base:25,house:40,restaurant:30,hospital:35,factory:50,mine:20,depot:10,oil:15};
+  let playerId=(()=>{try{return localStorage.getItem('jm-id')}catch{return null}})()||newId(), resources={...initialResources}, own=blank(), enemy=blank();
+  try{localStorage.setItem('jm-id',playerId)}catch{}
+  let country='iran', enemyCountry='usa', turn=1, sfxOn=true, tool=null, skipRobot=false;
+  let flash={own:new Set(),enemy:new Set()}, stats={shots:0,spent:0};
+  let record={wins:0,losses:0,best:0,ach:[]};
+  try{const r=JSON.parse(localStorage.getItem('jm-record')||'null');if(r&&typeof r==='object')record={...record,...r}}catch{}
+  record.ach=Array.isArray(record.ach)?record.ach.filter(x=>typeof x==='string').slice(0,20):[];
+  ['wins','losses','best'].forEach(k=>{record[k]=Number.isFinite(Number(record[k]))?Math.max(0,Math.floor(Number(record[k]))):0});
+  const saveRecord=()=>{try{localStorage.setItem('jm-record',JSON.stringify(record))}catch{}};
+  let selected={kind:'weapon',key:'w0'}, moving=false, moveFrom=null, finished=false, playerHits=0, robotHits=0, aiMemory=[], logs=[];
+  const costText=cost=>Object.entries(cost).map(([k,v])=>`${resourceNames[k]} ${fa(v)}`).join(' · ');
+  const affordable=cost=>Object.entries(cost).every(([k,v])=>resources[k]>=v);
+  const pay=cost=>{if(typeof bonusUntil!=='undefined'&&Date.now()<bonusUntil)return;for(const [k,v] of Object.entries(cost))resources[k]-=v};
+  const message=text=>{$('status').textContent=text};
+  const location=i=>`ردیف ${fa(Math.floor(i/SIZE)+1)}، ستون ${fa(i%SIZE+1)}`;
+  const describe=cell=>{
+    const item=buildings[cell.type];
+    return `${item.name} — ${infoOf(item)} ${fxOf(item)} استقامت: ${fa(Math.max(0,cell.hp))} از ${fa(cell.max||item.hp)}.`;
+  };
+  function drawLogs(){
+    $('log').replaceChildren();
+    logs.forEach(text=>{
+      const row=document.createElement('p');
+      row.className='log-line';
+      row.textContent=text;
+      $('log').appendChild(row);
+    });
+  }
+  function log(text){logs.unshift(`[نوبت ${fa(turn)}] ${text}`);logs=logs.slice(0,300);drawLogs()}
+  function place(board,index,type,bonus=0){const hp=buildings[type].hp+bonus;board[index]={type,hp,max:hp,attacked:false,blocked:false,scouted:false}}
+  // در سختی‌های بالاتر ساختمان‌های دشمن استقامت (اچ‌پی) بیشتری دارند
+  const store={
+    get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}},
+    set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+  };
+  let bonusUntil=0;
+  const bonusHistory=()=>{try{return JSON.parse(localStorage.getItem('jm-bonus-uses')||'[]').filter(t=>Date.now()-t<7200000)}catch{return[]}};
+  $('bonus-activate')?.addEventListener('click',()=>{
+    const st=$('bonus-status');if($('bonus-code').value.trim()!=='1010'){st.textContent='رمز نادرست است.';return}
+    const uses=bonusHistory();if(uses.length>=3){st.textContent='سقف ۳ بار در ۲ ساعت استفاده شده؛ بعداً دوباره امتحان کن.';return}
+    uses.push(Date.now());try{localStorage.setItem('jm-bonus-uses',JSON.stringify(uses))}catch{}
+    bonusUntil=Date.now()+300000;Object.keys(resources).forEach(k=>resources[k]=999999999);$('bonus-code').value='';st.textContent='فعال شد! دارایی‌ها به مدت ۵ دقیقه نامحدودند.';render();
+    setTimeout(()=>{if(Date.now()>=bonusUntil){bonusUntil=0;st.textContent='زمان کد ویژه تمام شد.';render()}},300500);
+  });
+  const achievements=[
+    {id:'win',text:'اولین پیروزی',test:c=>c.won},
+    {id:'fast',text:'پیروزی در کمتر از ۸ نوبت',test:c=>c.won&&c.turn<8},
+    {id:'thrifty',text:'پیروزی با کمتر از ۴۰ منبع مصرف‌شده',test:c=>c.won&&stats.spent<40},
+    {id:'hardwin',text:'پیروزی در سختی فرمانده یا افسانه‌ای',test:c=>c.won&&['expert','legendary'].includes(c.diff)},
+    {id:'untouched',text:'پیروزی بدون ازدست‌دادن ساختمان',test:c=>c.won&&c.lost===0},
+    {id:'sweep',text:'تخریب ۶ ساختمان دشمن',test:c=>c.destroyed>=6}
+  ];
+  // اگر منابع و درآمد تمام شده باشد و هیچ سلاح قابل‌استفاده‌ای نباشد، بازی بن‌بست است
+  function stuck(){
+    if(finished||economyActive()||!own.some(c=>c.type))return false;
+    const need=['house','factory'].filter(t=>!hasIntact(own,t)),tot={};
+    need.forEach(t=>Object.entries(buildings[t].cost).forEach(([k,v])=>{tot[k]=(tot[k]||0)+v}));
+    if(need.length&&own.some(c=>!c.type)&&affordable(tot))return false;
+    return !Object.values(weapons).some(w=>(!w.requires||hasIntact(own,w.requires))&&affordable(weaponCost(w)));
+  }
+  const goalFor=()=>net.on?8:({easy:6,normal:8,hard:10,expert:12,legendary:14}[$('difficulty').value]??8);
+  const hpBonusFor=level=>({easy:0,normal:0,hard:1,expert:2,legendary:3}[level]??0);
+
+  const icons={gold:'🪙',wood:'🪵',stone:'🪨',metal:'⚙️',fuel:'⛽'};
+  const costIcons=c=>Object.entries(c).map(([k,v])=>`${icons[k]} ${fa(v)}`).join(' · ');
+  const neighbors=i=>[i-SIZE,i+SIZE,i-1,i+1].filter(n=>
+    n>=0&&n<COUNT&&Math.abs(Math.floor(n/SIZE)-Math.floor(i/SIZE))+Math.abs(n%SIZE-i%SIZE)===1);
+  const startResources=()=>({...initialResources,...countries[country].start});
+  // درآمد هر ساختمان = درآمد پایه + امتیاز اقتصادی کشور
+  function incomeOf(type){
+    const out={...(buildings[type].income||{})};
+    for(const [k,v] of Object.entries(countries[country].bonus[type]||{}))out[k]=(out[k]||0)+v;
+    for(const k in out)out[k]*=PRICE[country]||15;
+    return out;
+  }
+  const hasIncome=item=>item.key&&Object.keys(incomeOf(item.key)).length>0;
+  const infoOf=item=>hasIncome(item)?'فقط با داشتن خانه و کارخانهٔ سالم درآمد می‌دهد.':(item.info||'');
+  const fxOf=item=>hasIncome(item)
+    ?`درآمد ${costIcons(incomeOf(item.key))}${item.fx?' · '+item.fx:''}`
+    :(item.fx||'');
+  // شلیک یک سلاح روی زمین و برگرداندن مجموع آسیب
+  function fire(board,w,index){
+    const free=n=>!board[n].attacked;
+    let targets=[index];
+    if(w.kind==='rocket'||w.kind==='cluster'||w.kind==='missile'){
+      const o=neighbors(index).filter(free);
+      for(let k=0;k<w.splash&&o.length;k++)targets.push(o.splice(random(o.length),1)[0]);
+    }
+    if(w.kind==='jet'){
+      const row=Math.floor(index/SIZE),half=(w.width-1)/2;targets=[];
+      for(let n=index-half;n<=index+half;n++)if(n>=0&&n<COUNT&&Math.floor(n/SIZE)===row&&free(n))targets.push(n);
+    }
+    if(w.kind==='bomber'){
+      const half=(w.width-1)/2;targets=[];
+      for(let k=-half;k<=half;k++){const n=index+k*SIZE;if(n>=0&&n<COUNT&&free(n))targets.push(n)}
+    }
+    let dmg=0,blocked=0,note='';const events=[];
+    for(const t of targets){const r=strike(board,t,w.dmg,w.kind==='laser');events.push(r);dmg+=r.dmg;if(r.blocked)blocked++}
+    let scouted=0;
+    if(w.kind==='ew'&&board===enemy){
+      const c=board.filter(x=>x.type&&!x.attacked&&!x.scouted);
+      for(let k=0;k<w.reveal&&c.length;k++){c.splice(random(c.length),1)[0].scouted=true;scouted++}
+    }
+    if(w.kind==='drone'&&dmg===0&&!blocked){
+      const near=neighbors(index).filter(n=>free(n)&&board[n].type&&board[n].hp>0);
+      for(let k=0;k<w.redirect&&near.length;k++){
+        const r=strike(board,near.splice(random(near.length),1)[0],1);
+        events.push(r);dmg+=r.dmg;if(r.blocked)blocked++;note=' پهپاد به ساختمان مجاور رفت.';
+      }
+    }
+    events.forEach(e=>flash[board===own?'own':'enemy'].add(e.index));
+    return {dmg,blocked,note,events,scouted};
+  }
+  // شرح یک رویداد روی زمین خودمان (همهٔ جزئیات برای بازیکن معلوم است)
+  const eventText=e=>e.hit?`${buildings[e.type].name} در ${location(e.index)} ${fa(e.dmg)} آسیب دید${e.destroyed?' و تخریب شد':''}`
+    :e.blocked?`ضربه به ${buildings[e.type].name} در ${location(e.index)} توسط سنگر جذب شد`
+    :`خانهٔ ${location(e.index)} خالی بود`;
+  const hasIntact=(board,type)=>board.some(c=>c.type===type&&c.hp>0);
+  // مقر فرماندهی سالم: ۱ طلا تخفیف روی هر سلاح (حداقل ۱)
+  function weaponCost(w){
+    const c={...w.cost};
+    if(hasIntact(own,'base')&&c.gold>1)c.gold-=1;
+    return c;
+  }
+  // سنگر مجاور با ۵۰٪ احتمال ضربه را جذب می‌کند
+  function strike(board,index,dmg,pierce){
+    const cell=board[index];
+    cell.attacked=true;
+    const type=cell.type;
+    if(!type||cell.hp<=0)return {index,type,hit:false,blocked:false,dmg:0,destroyed:false};
+    if(!pierce&&neighbors(index).some(n=>board[n].type==='bunker'&&board[n].hp>0)&&Math.random()<(['turkey','iran'].includes(board===own?country:enemyCountry)?.7:.5)){
+      cell.blocked=true;return {index,type,hit:false,blocked:true,dmg:0,destroyed:false};
+    }
+    const d=Math.min(dmg,cell.hp);cell.hp-=d;
+    return {index,type,hit:true,blocked:false,dmg:d,destroyed:cell.hp<=0};
+  }
+  // هر بیمارستان سالم در هر نوبت یک ساختمان آسیب‌دیده را ۱ واحد ترمیم می‌کند
+  function intercepted(board,w){
+    if(!['missile','jet','drone','bomber'].includes(w.kind))return false;
+    const n=board.filter(c=>c.type==='defense'&&c.hp>0).length;
+    return n>0&&Math.random()<Math.min(.7,.35*n);
+  }
+  // افکت‌های صوتی کوتاه (Web Audio)
+  let sctx=null;
+  function sfx(type){
+    if(!sfxOn)return;
+    try{
+      sctx=sctx||new (window.AudioContext||window.webkitAudioContext)();
+      if(sctx.state==='suspended')sctx.resume();
+      const t0=sctx.currentTime,v=(typeof volume==='number'?volume:.6);
+      const beep=(f0,f1,d,wave,vol,at=0)=>{const o=sctx.createOscillator(),g=sctx.createGain(),t=t0+at;
+        o.type=wave;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+d);
+        g.gain.setValueAtTime(vol*v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(sctx.destination);o.start(t);o.stop(t+d+.02)};
+      const noise=(d,vol)=>{const b=sctx.createBuffer(1,Math.floor(sctx.sampleRate*d),sctx.sampleRate),a=b.getChannelData(0);
+        for(let i=0;i<a.length;i++)a[i]=(Math.random()*2-1)*(1-i/a.length);
+        const s2=sctx.createBufferSource(),g=sctx.createGain();s2.buffer=b;g.gain.value=vol*v;s2.connect(g);g.connect(sctx.destination);s2.start(t0)};
+      ({hit:()=>{noise(.15,.5);beep(180,60,.15,'sawtooth',.3)},
+        boom:()=>{noise(.6,.9);beep(120,30,.55,'sawtooth',.5)},
+        miss:()=>beep(400,220,.12,'sine',.2),
+        build:()=>{beep(300,600,.1,'square',.12);beep(450,800,.1,'square',.12,.1)},
+        block:()=>{beep(700,650,.08,'triangle',.3);beep(700,650,.08,'triangle',.3,.12)},
+        levelup:()=>[392,494,587,784].forEach((f,i)=>beep(f,f*1.01,.18,'triangle',.28,i*.1)),
+        gift:()=>{beep(880,1320,.12,'sine',.25);beep(1320,1760,.15,'sine',.25,.12)},
+        coin:()=>beep(1200,1800,.08,'square',.12),
+        alarm:()=>{beep(500,300,.2,'sawtooth',.22);beep(500,300,.2,'sawtooth',.22,.25)},
+        win:()=>[262,330,392,523].forEach((f,i)=>beep(f,f,.25,'triangle',.3,i*.18)),
+        lose:()=>[330,262,220,165].forEach((f,i)=>beep(f,f*.9,.3,'sawtooth',.25,i*.2))})[type]();
+    }catch{}
+  }
+  function healBoard(board){
+    let n=0;
+    const doctors=board.filter(c=>c.type==='hospital'&&c.hp>0).length;
+    const per=['uk','iran'].includes(board===own?country:enemyCountry)?2:1;
+    for(let d=0;d<doctors*per;d++){
+      const hurt=board.filter(c=>c.type&&c.hp>0&&c.hp<(c.max||buildings[c.type].hp));
+      if(!hurt.length)break;
+      hurt[random(hurt.length)].hp++;n++;
+    }
+    return n;
+  }
+  // هر برج دیده‌بانی سالم در هر نوبت یک ساختمان دشمن را آشکار می‌کند
+  function scout(){
+    if(net.on){let t=0;own.forEach(c=>{if(c.type==='tower'&&c.hp>0&&Math.random()<.1)t++});if(t)send({t:'scout',n:t});return}
+    const towers=own.filter(c=>c.type==='tower'&&c.hp>0).length;let n=0;
+    for(let t=0;t<towers;t++){
+      if(Math.random()>=.1)continue;
+      const c=enemy.filter(x=>x.type&&!x.attacked&&!x.scouted);
+      if(!c.length)break;
+      c[random(c.length)].scouted=true;n++;
+    }
+    if(n)log(`دیده‌بان ${fa(n)} ساختمان دشمن را شناسایی کرد.`);
+  }
+
+  function renderBoard(board,id,isEnemy){
+    const holder=$(id);
+    board.forEach((cell,index)=>{
+      let tile=holder.children[index];
+      if(!tile){
+        tile=document.createElement('button');
+        tile.type='button';tile.className='tile';tile.dataset.index=String(index);
+        holder.appendChild(tile);
+      }
+      tile.className='tile'+(isEnemy&&!cell.attacked?' fog':'')+
+        (isEnemy&&!cell.attacked&&cell.scouted&&cell.type?' scouted':'')+
+        (cell.attacked?(cell.type?(cell.hp<=0?' ruin':((isEnemy&&!cell.scouted)?' miss':(cell.blocked?' blocked':' hit'))):' miss'):'')+
+        (!isEnemy&&cell.attacked&&cell.type&&!cell.blocked?' own-damage':'')+
+        (!isEnemy&&moving&&moveFrom===index?' picked':'')+
+        (flash[isEnemy?'enemy':'own'].has(index)?' flash':'');
+      tile.textContent=isEnemy
+        ?(cell.attacked?(cell.type&&cell.hp<=0?buildings[cell.type].icon:(cell.type&&cell.scouted?(cell.blocked?'🛡️':'✹'):'·')):(cell.scouted&&cell.type?buildings[cell.type].icon:'؟'))
+        :(cell.type?(cell.hp<=0?'✕':buildings[cell.type].icon):(cell.attacked?'·':''));
+      tile.setAttribute('aria-label',isEnemy
+        ?`زمین ربات، ${location(index)}، ${cell.attacked?(cell.type&&cell.hp<=0?'تخریب شد: '+buildings[cell.type].name:'هدف گرفته شد'):'ناشناخته'}`
+        :`زمین شما، ${location(index)}، ${cell.type?buildings[cell.type].name:'خالی'}`);
+      tile.title=isEnemy?(cell.attacked?(cell.type&&(cell.hp<=0||cell.scouted)?describe(cell):'هدف گرفته شد؛ ساختمانی تخریب نشد'):(cell.scouted&&cell.type?'شناسایی‌شده: '+buildings[cell.type].name:'موضع ناشناخته'))
+        :(cell.type?describe(cell):'خانهٔ خالی');
+      if(cell.type&&cell.hp>0&&(!isEnemy||cell.scouted)){
+        const mx=cell.max||buildings[cell.type].hp;
+        tile.setAttribute('data-pips','●'.repeat(cell.hp)+'○'.repeat(Math.max(0,mx-cell.hp)));
+      }else tile.removeAttribute('data-pips');
+    });
+  }
+  function render(){
+    setMusic();
+    renderBoard(own,'player-board',false);
+    renderBoard(enemy,'enemy-board',true);
+    runFx();
+    Object.keys(initialResources).forEach(k=>{$(k).textContent=fa(resources[k])});
+    $('score').textContent=`${fa(playerHits)} / ${fa(goalFor())}`;
+    $('enemy-score').textContent=`${fa(robotHits)} / ۸`;
+    $('player-id').textContent=playerId;
+    $('level-info').textContent=levelText();
+    {const pop=population();
+      if(lastPop!==null&&pop<lastPop){log(`☠️ ${fa(lastPop-pop)} شهروند در حمله کشته شدند.`);sfx('alarm')}
+      lastPop=pop;$('pop-info').textContent=`👥 شهروندان شما: ${fa(pop)}`}
+    $('record-info').textContent=`🏆 برد: ${fa(record.wins)} · باخت: ${fa(record.losses)} · بهترین امتیاز: ${fa(record.best)} · 🏅 دستاوردها: ${fa(record.ach.length)}`;
+    $('repair-button').classList.toggle('active',tool==='repair');
+    $('upgrade-button').classList.toggle('active',tool==='upgrade');
+    $('econ').textContent=economyActive()?'فعال':'غیرفعال';
+    const my=countries[country],ec=countries[enemyCountry];
+    $('country-info').textContent=`${my.flag} ${my.name}: ${my.perk} — دشمن: ${ec.flag} ${ec.name}${ec.def?' ('+ec.def+')':''}`;
+    $('enemy-title').textContent=(net.on?`زمین ${net.peerName} (سطح ${fa(net.peerLvl||1)}) `:'زمین ربات ')+ec.flag;
+    $('net-bar').hidden=!net.on;
+    $('net-turn').textContent=turnText();$('net-ready').hidden=!(net.phase==='setup'&&!net.ready);
+    if(!net.on){try{localStorage.setItem('jm-autosave',JSON.stringify(snapshot()))}catch{}}
+    $('move-button').hidden=moving;
+    $('cancel-move-button').hidden=!moving;
+    document.querySelectorAll('[data-kind]').forEach(button=>{
+      const active=!moving&&selected.kind===button.dataset.kind&&selected.key===button.dataset.key;
+      button.classList.toggle('selected',active);
+      button.setAttribute('aria-pressed',String(active));
+      const isW=button.dataset.kind==='weapon';
+      const item=isW?weapons[button.dataset.key]:buildings[button.dataset.key];
+      const cost=isW?weaponCost(item):item.cost;
+      const fxEl=button.querySelector('.fx');if(fxEl)fxEl.textContent=fxOf(item);
+      if(isW){
+        button.querySelector('span').textContent=item.name;
+        button.querySelector('small').textContent=costIcons(cost);
+        button.classList.toggle('locked',!!item.requires&&!hasIntact(own,item.requires));
+      }
+      button.title=`${item.name} — ${costText(cost)}${infoOf(item)?' — '+infoOf(item):''} ${fxOf(item)}`;
+    });
+  }
+  function seed(){
+    lastPop=null;repriceBuildings();
+    own=blank();enemy=blank();aiMemory=[];turn=1;stats={shots:0,spent:0};$('end-modal').hidden=true;flash.own.clear();flash.enemy.clear();
+    const others=Object.keys(countries).filter(k=>k!==country);enemyCountry=others[random(others.length)];playerHits=0;robotHits=0;finished=false;moving=false;moveFrom=null;
+    const starting=['base','factory','bunker','mine','depot','tower','house','restaurant','hospital','oil','defense'];
+    for(const board of [enemy]){
+      const spots=Array.from({length:COUNT},(_,i)=>i);
+      for(let i=spots.length-1;i>0;i--){const j=random(i+1);[spots[i],spots[j]]=[spots[j],spots[i]]}
+      starting.forEach((type,i)=>place(board,spots[i],type,board===enemy?hpBonusFor($('difficulty').value):0));
+    }
+    render();
+  }
+  // درآمد همهٔ منابع فقط وقتی فعال است که یک خانه (شهروند) و یک کارخانهٔ (کار) سالم داشته باشید
+  const economyActive=()=>own.some(c=>c.type==='house'&&c.hp>0)&&own.some(c=>c.type==='factory'&&c.hp>0);
+  function rewardTurn(){
+    const active=economyActive(),gains={};
+    own.forEach(cell=>{
+      if(cell.type&&cell.hp>0){
+        for(const [k,v] of Object.entries(incomeOf(cell.type))){
+          if(!active)continue;
+          resources[k]+=v;gains[k]=(gains[k]||0)+v;
+        }
+      }
+    });
+    log(active?(Object.keys(gains).length?`درآمد این نوبت: ${costIcons(gains)}.`:'درآمد این نوبت: هیچ.')
+      :'درآمد این نوبت: هیچ؛ برای درآمد به خانه و کارخانهٔ سالم نیاز دارید.');
+  }
+  // رویداد تصادفی (۱۸٪ در هر نوبت)
+  function randomEvent(){
+    if(net.on||Math.random()>=.18)return;
+    const ev=random(3);
+    if(ev===0){skipRobot=true;log('🌫️ رویداد: مه غلیظ؛ حملهٔ بعدی ربات انجام نمی‌شود.')}
+    else if(ev===1){
+      const hurt=own.filter(c=>c.type&&c.hp>0&&c.hp<(c.max||buildings[c.type].hp));
+      if(hurt.length){hurt[random(hurt.length)].hp++;robotHits=Math.max(0,robotHits-1);log('🔧 رویداد: تعمیرات اضطراری یکی از ساختمان‌هایتان را ترمیم کرد.')}
+      else log('🔧 رویداد: تیم تعمیرات آماده بود اما ساختمان آسیب‌دیده‌ای نبود.');
+    }else{
+      const c=enemy.filter(x=>x.type&&!x.attacked&&!x.scouted);
+      for(let k=0;k<2&&c.length;k++)c.splice(random(c.length),1)[0].scouted=true;
+      log('🛰️ رویداد: ماهواره ۲ ساختمان دشمن را شناسایی کرد.');
+    }
+  }
+  function endOfTurn(){
+    rewardTurn();scout();randomEvent();
+    const h=healBoard(own);
+    if(h){robotHits=Math.max(0,robotHits-h);log(`بیمارستان شما ${fa(h)} ساختمان را ترمیم کرد.`)}
+  }
+  function finish(won){
+    finished=true;gainXp(won?150:30);
+    const delta=won?{gold:15,wood:8,stone:8,metal:8,fuel:6}:{gold:2,wood:2,stone:2,metal:2,fuel:2};
+    if(!economyActive())for(const k in delta)delta[k]=0;
+    for(const k in delta)delta[k]*=PRICE[country]||15;
+    for(const [k,v] of Object.entries(delta))resources[k]+=v;
+    const text=won?'پیروزی! برای ادامه «نبرد جدید» را بزنید.':'شکست! برای تلاش دوباره «نبرد جدید» را بزنید.';
+    message(text);log(text);render();sfx(won?'win':'lose');say(won?1:2);
+    const destroyed=enemy.filter(c=>c.type&&c.hp<=0).length,lost=own.filter(c=>c.type&&c.hp<=0).length;
+    const score=(won?500:0)+destroyed*60+Math.max(0,300-turn*10)-lost*20;
+    const final=Math.max(0,score),best=store.get('jm-best',0),wins=store.get('jm-wins',0)+(won?1:0);
+    if(won)store.set('jm-wins',wins);
+    if(final>best)store.set('jm-best',final);
+    const have=store.get('jm-ach',[]),diff=$('difficulty').value;
+    const fresh=achievements.filter(a=>!have.includes(a.id)&&a.test({won,turn,destroyed,lost,diff}));
+    if(fresh.length)store.set('jm-ach',[...have,...fresh.map(a=>a.id)]);
+    const extra=`\nبهترین امتیاز: ${fa(Math.max(best,final))}${final>best?' (رکورد جدید!)':''}\nپیروزی‌ها: ${fa(wins)}`+
+      (fresh.length?`\n🏅 دستاورد جدید: ${fresh.map(a=>a.text).join('، ')}`:'');
+    $('end-title').textContent=won?'🏆 پیروزی!':'💥 شکست';
+    $('end-stats').textContent=`حمله‌ها: ${fa(stats.shots)}\nنوبت‌ها: ${fa(turn)}\nساختمان‌های تخریب‌شدهٔ دشمن: ${fa(destroyed)}\nساختمان‌های ازدست‌رفتهٔ شما: ${fa(lost)}\nمنابع مصرف‌شده: ${fa(stats.spent)}\nامتیاز: ${fa(final)}${extra}`;
+    const ach=[];
+    if(won&&lost===0)ach.push('بی‌تلفات');
+    if(won&&stats.shots<=goalFor()+3)ach.push('تک‌تیرانداز');
+    if(won&&stats.spent<45)ach.push('اقتصاددان');
+    if(won&&diff==='expert')ach.push('فرمانده');
+    if(!won&&destroyed>=5)ach.push('جان‌سخت');
+    ach.filter(a=>!record.ach.includes(a)).forEach(a=>record.ach.push(a));
+    record[won?'wins':'losses']++;record.best=Math.max(record.best,Math.max(0,score));saveRecord();
+    if(ach.length)$('end-stats').textContent+=`\n🏅 دستاوردها: ${ach.join('، ')}`;
+    $('end-stats').textContent+=`\nرکورد امتیاز: ${fa(record.best)}`;
+    render();
+    $('end-modal').hidden=false;
+  }
+  function robotMove(){
+    const healed=healBoard(enemy);
+    if(healed){playerHits=Math.max(0,playerHits-healed);log(`بیمارستان ربات ${fa(healed)} ساختمان را ترمیم کرد.`)}
+    if(skipRobot){skipRobot=false;message('مه غلیظ بود و ربات حمله نکرد. نوبت شماست.');turn++;render();return}
+    const available=own.map((cell,i)=>!cell.attacked?i:-1).filter(i=>i>=0);
+    if(!available.length){finished=true;message('خانهٔ هدف‌نگرفته‌ای باقی نمانده است. نبرد جدیدی آغاز کنید.');return}
+    const skill={easy:.15,normal:.3,hard:.5,expert:.7,legendary:.85}[$('difficulty').value]??.3;
+    let target;
+    if(Math.random()<skill){
+      const adjacent=aiMemory.flatMap(i=>[i-SIZE,i+SIZE,i-1,i+1].filter(n=>
+        n>=0&&n<COUNT&&Math.abs(Math.floor(n/SIZE)-Math.floor(i/SIZE))+Math.abs(n%SIZE-i%SIZE)===1
+      ));
+      const candidates=adjacent.filter(i=>!own[i].attacked);
+      if(candidates.length)target=candidates[random(candidates.length)];
+      else if(Math.random()<skill){
+        const occupied=available.filter(i=>own[i].type&&own[i].hp>0);
+        if(occupied.length)target=occupied[random(occupied.length)];
+      }
+    }
+    if(target===undefined){
+      const pool=skill>=.5?available.filter(i=>(Math.floor(i/SIZE)+i%SIZE)%2===0):[];
+      target=(pool.length?pool:available)[random((pool.length?pool:available).length)];
+    }
+    const wchance={easy:.1,normal:.2,hard:.3,expert:.4,legendary:.5}[$('difficulty').value]??.2;
+    let w={kind:'basic',dmg:1,name:null};
+    if(Math.random()<wchance){
+      const list=buildArsenal(enemyCountry);
+      w=list[random(list.length)];
+    }
+    if(intercepted(own,w)){
+      log(`پدافند هوایی شما حملهٔ ${w.name} ربات را رد کرد.`);sfx('block');
+    }else{
+      const res=fire(own,w,target);
+      if(res.dmg){robotHits+=res.dmg;res.events.filter(e=>e.hit).forEach(e=>aiMemory.push(e.index))}
+      sfx(res.events.some(e=>e.destroyed)?'boom':res.dmg?'hit':'miss');
+      log(`ربات${w.name?' با '+w.name:''} به ${location(target)} حمله کرد: ${res.events.map(eventText).join('؛ ')}.${res.note}`);
+    }
+    if(robotHits>=8){finish(false);return}
+    message('نوبت شماست. حمله کنید، ساختمان بسازید یا چینش را تغییر دهید.');
+    turn++;
+    if(stuck()){log('منابع و درآمد شما تمام شد و سلاحی در دسترس ندارید؛ نبرد را باختید.');finish(false);return}
+    render();
+  }
+
+  $('enemy-board').addEventListener('click',event=>{
+    const tile=event.target.closest('.tile');if(!tile||finished)return;
+    if(moving){message('برای حمله، ابتدا «پایان چینش» را بزنید.');return}
+    if(selected.kind!=='weapon'){message('ابتدا یک سلاح انتخاب کنید.');return}
+    const index=Number(tile.dataset.index),cell=enemy[index],weapon=weapons[selected.key];
+    if(cell.attacked){message('این خانه قبلاً هدف قرار گرفته است.');return}
+    if(net.on&&net.phase!=='play'){message('هنوز مرحلهٔ چیدمان است؛ ساختمان بسازید و «آماده‌ام» را بزنید.');return}
+    if(net.on&&!net.myTurn){message('نوبت حریف است؛ کمی صبر کنید.');return}
+    if(net.on&&!(net.ch&&net.ch.readyState==='open')){message('ارتباط با حریف قطع است.');return}
+    if(weapon.requires&&!hasIntact(own,weapon.requires)){
+      message(`برای ${weapon.name} به «${buildings[weapon.requires].name}» سالم نیاز دارید.`);return;
+    }
+    const cost=weaponCost(weapon);
+    if(!affordable(cost)){message(`منابع کافی برای ${weapon.name} ندارید.`);return}
+    pay(cost);stats.shots++;stats.spent+=Object.values(cost).reduce((a,b)=>a+b,0);
+    flash.own.clear();flash.enemy.clear();
+    if(net.on){netAttack(index,weapon);return}
+    if(intercepted(enemy,weapon)){
+      log(`پدافند دشمن حملهٔ ${weapon.name} شما را رد کرد (هزینه از دست رفت).`);sfx('block');
+      endOfTurn();render();robotMove();return;
+    }
+    const res=fire(enemy,weapon,index);
+    playerHits+=res.dmg;sfx(res.events.some(e=>e.destroyed)?'boom':res.dmg?'hit':'miss');
+    const gone=res.events.filter(e=>e.destroyed);
+    award(res.dmg,gone.length);
+    log(`شما با ${weapon.name} به ${location(index)} حمله کردید (هزینه: ${costText(cost)}) — ${fa(res.events.length)} خانه هدف گرفته شد؛ `+
+      (res.dmg?`${fa(res.dmg)} آسیب وارد شد. `:'آسیبی وارد نشد. ')+
+      (gone.length?`تخریب شد: ${gone.map(e=>`${buildings[e.type].name} در ${location(e.index)}`).join('، ')}.`
+        :'ساختمانی تخریب نشد، پس مکانی فاش نشد.')+
+      (res.scouted?` ${fa(res.scouted)} ساختمان دشمن شناسایی شد.`:''));
+    if(playerHits>=goalFor()){finish(true);return}
+    endOfTurn();render();robotMove();
+  });
+  $('player-board').addEventListener('click',event=>{
+    const tile=event.target.closest('.tile');if(!tile||finished)return;
+    const index=Number(tile.dataset.index),cell=own[index];
+    if(moving){
+      if(moveFrom===null){
+        if(!cell.type||cell.hp<=0){message('ابتدا یک ساختمان سالم را انتخاب کنید.');return}
+        moveFrom=index;
+        message(`${buildings[cell.type].name} انتخاب شد. خانهٔ مقصد را لمس کنید.`);
+      }else if(index===moveFrom){
+        moveFrom=null;message('انتخاب ساختمان لغو شد.');
+      }else if(cell.type&&cell.hp<=0){
+        message('نمی‌توان با ساختمان ویران جابه‌جا شد.');
+      }else{
+        const source=own[moveFrom],destination=own[index];
+        own[index]={...source,attacked:destination.attacked,blocked:destination.blocked};
+        own[moveFrom]={...destination,attacked:source.attacked,blocked:source.blocked};
+        log(destination.type?`جای ${buildings[source.type].name} و ${buildings[destination.type].name} عوض شد.`:
+          `${buildings[source.type].name} جابه‌جا شد.`);
+        moveFrom=null;message('چینش انجام شد.');
+      }
+      render();return;
+    }
+    if(tool){useTool(index);return}
+    if(cell.type){message(describe(cell));toast(`${buildings[cell.type].icon} ${describe(cell)}`);return}
+    if(selected.kind!=='building'){message('برای ساخت، ابتدا ساختمانی انتخاب کنید.');return}
+    const item=buildings[selected.key];
+    if(!affordable(item.cost)){message(`برای ساخت ${item.name} منابع کافی ندارید.`);return}
+    pay(item.cost);stats.spent+=Object.values(item.cost).reduce((a,b)=>a+b,0);sfx('build');gainXp(3);place(own,index,selected.key);
+    log(`${item.name} در ${location(index)} ساخته شد (هزینه: ${costText(item.cost)}).`);
+    message(describe(own[index]));render();
+  });
+  let toastTimer=null;
+  function toast(text){
+    const t=$('info-toast');t.textContent=text;t.hidden=false;
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true},7000);
+  }
+  $('info-toast').addEventListener('click',()=>{$('info-toast').hidden=true;clearTimeout(toastTimer)});
+  function summaryOf(kind,item){
+    if(kind==='weapon'){
+      const lock=item.requires&&!hasIntact(own,item.requires)?`\n⚠️ به «${buildings[item.requires].name}» سالم نیاز دارید.`:'';
+      return `${CATS[item.cat].icon} ${item.name}\n${fxOf(item)}\nهزینه: ${costText(weaponCost(item))}${lock}`;
+    }
+    return `${item.icon} ${item.name}\n${[fxOf(item),infoOf(item)].filter(Boolean).join(' · ')}\nهزینه: ${costText(item.cost)}`;
+  }
+  function useTool(index){
+    const cell=own[index];
+    if(!cell.type){message('روی یک ساختمان بزنید.');return}
+    const base=buildings[cell.type],max=cell.max||base.hp;
+    let cost,text;
+    if(tool==='repair'){
+      if(cell.hp>0&&cell.hp>=max){message('این ساختمان سالم است.');return}
+      cost=inflate(cell.hp<=0?{gold:2,metal:2}:{gold:1,metal:1});
+      if(!affordable(cost)){message(`منابع کافی برای تعمیر ندارید: ${costText(cost)}.`);return}
+      pay(cost);cell.hp=Math.min(max,Math.max(0,cell.hp)+1);robotHits=Math.max(0,robotHits-1);
+      text=`${base.name} در ${location(index)} تعمیر شد`;
+    }else{
+      if(cell.hp<=0){message('ابتدا ساختمان ویران را تعمیر کنید.');return}
+      if(max>=base.hp+2){message('این ساختمان به سقف ارتقا رسیده است.');return}
+      cost=inflate({gold:2,stone:2});
+      if(!affordable(cost)){message(`منابع کافی برای ارتقا ندارید: ${costText(cost)}.`);return}
+      pay(cost);cell.max=max+1;cell.hp++;text=`${base.name} در ${location(index)} ارتقا یافت (استقامت ${fa(cell.max)})`;
+    }
+    stats.spent+=Object.values(cost).reduce((a,b)=>a+b,0);sfx('build');
+    log(`${text} (هزینه: ${costText(cost)}).`);message(`${text}.`);render();
+  }
+  function selectItem(kind,key){
+    moving=false;moveFrom=null;tool=null;
+    selected={kind,key};
+    const item=kind==='building'?buildings[key]:weapons[key];
+    message(`${item.name} انتخاب شد. هزینه: ${costText(kind==='weapon'?weaponCost(item):item.cost)}.${infoOf(item)?' '+infoOf(item):''} ${fxOf(item)}`);
+    toast(summaryOf(kind,item));
+    render();
+  }
+  document.querySelectorAll('[data-kind]').forEach(button=>button.addEventListener('click',()=>selectItem(button.dataset.kind,button.dataset.key)));
+  function addFx(button){
+    if(button.querySelector('.fx'))return;
+    const item=button.dataset.kind==='weapon'?weapons[button.dataset.key]:buildings[button.dataset.key];
+    const fx=document.createElement('small');fx.className='fx';fx.textContent=fxOf(item);button.appendChild(fx);
+  }
+  // دسته‌بندی سلاح‌های کشور: تب‌ها + فهرست سلاح‌های همان دسته
+  function buildWeaponUI(){
+    const tabs=$('weapon-tabs'),list=$('weapon-list');
+    tabs.replaceChildren();list.replaceChildren();
+    Object.keys(CATS).forEach(cat=>{
+      const count=Object.values(weapons).filter(w=>w.cat===cat).length;
+      if(!count)return;
+      const chip=document.createElement('button');
+      chip.type='button';chip.className='chip'+(cat===weaponCat?' active':'');
+      chip.textContent=`${CATS[cat].icon} ${CATS[cat].name} (${fa(count)})`;
+      chip.addEventListener('click',()=>{weaponCat=cat;buildWeaponUI();render()});
+      tabs.appendChild(chip);
+    });
+    Object.values(weapons).filter(w=>w.cat===weaponCat).forEach(w=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='choice';b.dataset.kind='weapon';b.dataset.key=w.id;
+      const name=document.createElement('span'),cost=document.createElement('small');
+      name.textContent=w.name;b.appendChild(name);b.appendChild(cost);
+      b.addEventListener('click',()=>selectItem('weapon',w.id));
+      list.appendChild(b);addFx(b);
+    });
+  }
+  $('move-button').addEventListener('click',()=>{
+    if(finished){message('برای چینش دوباره، نبرد جدیدی آغاز کنید.');return}
+    moving=true;moveFrom=null;tool=null;
+    message('حالت چینش فعال است: ساختمان سالم و سپس مقصد را انتخاب کنید.');
+    render();$('player-section').scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  $('cancel-move-button').addEventListener('click',()=>{
+    moving=false;moveFrom=null;message('حالت چینش بسته شد.');render();
+  });
+  $('restart-button').addEventListener('click',()=>{
+    if(net.on){rematch();return}
+    seed();message('نبرد جدید آغاز شد؛ دارایی شما حفظ شده است.');log('دو زمین جدید آماده شدند.');
+  });
+
+  function snapshot(){
+    return {version:1,country,enemyCountry,turn,stats,playerId,resources,own,enemy,selected,moving,moveFrom,finished,
+      playerHits,robotHits,aiMemory,logs,difficulty:$('difficulty').value};
+  }
+  $('save-button').addEventListener('click',()=>{
+    try{
+      const blob=new Blob([JSON.stringify(snapshot())],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=url;link.download=`jang-modern-${playerId}.json`;
+      document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      message('فایل ذخیرهٔ کامل بازی دانلود شد. آن را برای بارگذاری بعدی نگه دارید.');
+    }catch{message('ذخیرهٔ فایل انجام نشد. دوباره تلاش کنید.')}
+  });
+  const readText=file=>file.text?file.text():new Promise((res,rej)=>{
+    const r=new FileReader();r.onload=()=>res(String(r.result));r.onerror=()=>rej(r.error);r.readAsText(file);
+  });
+  const has=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
+  function cleanBoard(board){
+    if(!Array.isArray(board)||board.length!==COUNT)return null;
+    const out=[];
+    for(const c of board){
+      if(!c||typeof c!=='object')return null;
+      const type=typeof c.type==='string'&&has(buildings,c.type)?c.type:null;
+      const raw=Number(c.hp);
+      const rawMax=Number(c.max);
+      const max=type?Math.max(buildings[type].hp,Number.isFinite(rawMax)?Math.min(8,Math.floor(rawMax)):0):0;
+      const hp=type&&Number.isFinite(raw)?Math.max(0,Math.min(max,Math.floor(raw))):0;
+      out.push({type,hp,max,attacked:!!c.attacked,blocked:!!c.blocked,scouted:!!c.scouted});
+    }
+    return out;
+  }
+  // متن ذخیره را بارگذاری می‌کند و پیام نتیجه را برمی‌گرداند
+  function loadFromText(text){
+    if(net.on)return 'در بازی دو نفره نمی‌شود بارگذاری کرد.';
+    lastPop=null;
+    let data;
+    try{data=JSON.parse(text)}catch{return 'محتوا معتبر نیست. فایل یا کدی را بدهید که با دکمهٔ «ذخیره» یا «کد ذخیره» گرفته‌اید.'}
+    try{
+      const o=cleanBoard(data&&data.own),e=cleanBoard(data&&data.enemy);
+      if(!o||!e)return 'این ذخیره مال این بازی نیست (چینش زمین‌ها کامل نیست).';
+      const res={};
+      for(const k of Object.keys(initialResources)){
+        const v=Number(data.resources&&data.resources[k]);
+        res[k]=Number.isFinite(v)?Math.max(0,Math.min(1e9,Math.floor(v))):initialResources[k];
+      }
+      const hits=v=>{const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(COUNT,Math.floor(n))):0};
+      if(typeof data.country==='string'&&has(countries,data.country))country=data.country;
+      applyWeapons();
+      const legacy={grad:'rocket',shahed:'drone',tomahawk:'missile',f16:'jet'};
+      const sel=data.selected&&typeof data.selected==='object'?{kind:data.selected.kind,key:legacy[data.selected.key]||data.selected.key}:null;
+      if(sel&&sel.kind==='weapon'&&!has(weapons,sel.key)){
+        const alt=Object.values(weapons).find(w=>w.kind===sel.key);sel.key=alt?alt.id:null;
+      }
+      const pool=sel&&(sel.kind==='building'?buildings:sel.kind==='weapon'?weapons:null);
+      own=o;enemy=e;resources=res;
+      selected=pool&&sel.key&&has(pool,sel.key)?{kind:sel.kind,key:sel.key}:{kind:'weapon',key:firstWeaponKey()};
+      if(selected.kind==='weapon')weaponCat=weapons[selected.key].cat;
+      buildWeaponUI();
+      if(typeof data.country==='string'&&has(countries,data.country))country=data.country;
+      enemyCountry=typeof data.enemyCountry==='string'&&has(countries,data.enemyCountry)&&data.enemyCountry!==country?data.enemyCountry
+        :Object.keys(countries).find(k=>k!==country);
+      $('country').value=country;
+      playerId=typeof data.playerId==='string'&&data.playerId?data.playerId.slice(0,80):playerId;
+      playerHits=hits(data.playerHits);robotHits=hits(data.robotHits);
+      finished=!!data.finished||playerHits>=goalFor()||robotHits>=8;
+      aiMemory=Array.isArray(data.aiMemory)?data.aiMemory.filter(i=>Number.isInteger(i)&&i>=0&&i<COUNT).slice(0,COUNT):[];
+      logs=Array.isArray(data.logs)?data.logs.filter(x=>typeof x==='string').slice(0,300):[];
+      turn=Number.isInteger(data.turn)&&data.turn>0?data.turn:1;
+      stats={shots:Number(data.stats&&data.stats.shots)||0,spent:Number(data.stats&&data.stats.spent)||0};
+      moving=false;moveFrom=null;
+      if(['easy','normal','hard','expert','legendary'].includes(data.difficulty))$('difficulty').value=data.difficulty;
+      log('بازی ذخیره‌شده بارگذاری شد.');render();
+      return finished?'بازی بارگذاری شد؛ این نبرد تمام شده است. «نبرد جدید» را بزنید.':'بازی ذخیره‌شده بارگذاری شد.';
+    }catch{return 'بارگذاری انجام نشد؛ ساختار ذخیره درست نیست.'}
+  }
+  $('load-button').addEventListener('click',()=>{
+    const panel=$('save-panel');panel.hidden=!panel.hidden;
+    if(!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  $('load-file').addEventListener('change',async event=>{
+    const input=event.target,file=input.files&&input.files[0];
+    if(!file)return;
+    try{message(loadFromText(await readText(file)))}
+    catch{message('خواندن فایل انجام نشد. «کد ذخیره» را در کادر بچسبانید.')}
+    finally{input.value=''}
+  });
+  $('load-text-button').addEventListener('click',()=>{
+    const t=$('save-text').value.trim();
+    message(t?loadFromText(t):'ابتدا کد ذخیره را در کادر بچسبانید.');
+  });
+  $('copy-save-button').addEventListener('click',async()=>{
+    const t=JSON.stringify(snapshot());$('save-text').value=t;
+    try{await navigator.clipboard.writeText(t);message('کد ذخیره کپی شد؛ آن را جایی نگه دارید.')}
+    catch{$('save-text').select();message('کد ذخیره در کادر قرار گرفت؛ آن را دستی کپی کنید.')}
+  });
+  $('autoload-button').addEventListener('click',()=>{
+    let t=null;try{t=localStorage.getItem('jm-autosave')}catch{}
+    message(t?loadFromText(t):'ذخیرهٔ خودکاری در این مرورگر پیدا نشد.');
+  });
+  $('close-save').addEventListener('click',()=>{$('save-panel').hidden=true});
+
+  $('quick-open').addEventListener('click',()=>{
+    $('quick-menu').hidden=false;$('quick-open').hidden=true;$('quick-close').focus();
+  });
+  $('quick-close').addEventListener('click',()=>{
+    $('quick-menu').hidden=true;$('quick-open').hidden=false;$('quick-open').focus();
+  });
+  document.querySelectorAll('[data-go]').forEach(button=>button.addEventListener('click',()=>{
+    $(button.dataset.go).scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+
+  // ===== بازی دو نفره: اتصال مستقیم WebRTC بدون سرور (تبادل کد دستی) =====
+  const KINDS=['rocket','drone','missile','jet','mortar','cluster','laser','bomber','ew'];
+  const netStatus=t=>{$('net-status').textContent=t};
+  // کد کوتاه: فقط اطلاعات ضروری اتصال (شناسه، رمز، اثرانگشت، آدرس‌ها) بسته می‌شود
+  function encode(d){
+    const L=d.sdp.split(/\r?\n/),g=k=>(L.find(l=>l.startsWith(k))||'').slice(k.length).trim();
+    const fp=g('a=fingerprint:sha-256 ').split(':').map(h=>String.fromCharCode(parseInt(h,16))).join('');
+    const c=[...new Set(L.filter(l=>l.startsWith('a=candidate:')).map(l=>l.split(' '))
+      .filter(a=>a[2].toLowerCase()==='udp'&&!a[4].includes(':')&&(a[7]==='host'||a[7]==='srflx')).map(a=>a[4]+':'+a[5]))].slice(0,4);
+    return [d.type==='offer'?'o':'a',g('a=ice-ufrag:'),g('a=ice-pwd:'),btoa(fp).replace(/=+$/,''),...(d.type==='answer'?[]:c)].join('|');
+  }
+  function decode(t){
+    const [ty,uf,pw,fp,...c]=t.replace(/\s+/g,'').split('|');
+    if(!uf||!pw||!fp||(ty==='o'&&!c.length))throw new Error('bad');
+    const hex=[...atob(fp)].map(ch=>ch.charCodeAt(0).toString(16).padStart(2,'0').toUpperCase()).join(':'),o=ty==='o';
+    const sdp=['v=0','o=- 1 2 IN IP4 127.0.0.1','s=-','t=0 0','a=group:BUNDLE 0','a=msid-semantic: WMS',
+      'm=application 9 UDP/DTLS/SCTP webrtc-datachannel','c=IN IP4 0.0.0.0','a=ice-ufrag:'+uf,'a=ice-pwd:'+pw,'a=ice-options:trickle',
+      'a=fingerprint:sha-256 '+hex,'a=setup:'+(o?'actpass':'active'),'a=mid:0','a=sctp-port:5000','a=max-message-size:262144',
+      ...c.map((x,i)=>{const k=x.lastIndexOf(':');return `a=candidate:${i+1} 1 udp ${2113937151-i} ${x.slice(0,k)} ${x.slice(k+1)} typ host generation 0`}),
+      ...(c.length?['a=end-of-candidates']:[]),''].join('\r\n');
+    return {type:o?'offer':'answer',sdp};
+  }
+  function send(m){try{if(net.ch&&net.ch.readyState==='open')net.ch.send(JSON.stringify(m))}catch{}}
+  function closeNet(){
+    clearInterval(net.timer);net.timer=null;clearInterval(net.hb);net.hb=null;
+    const pc=net.pc,ch=net.ch,pk=net.peer;net.pc=null;net.ch=null;net.peer=null;
+    if(pk){try{pk.destroy()}catch{}}
+    if(ch){ch.onclose=null;ch.onmessage=null;try{ch.close()}catch{}}
+    if(pc){pc.onconnectionstatechange=null;try{pc.close()}catch{}}
+  }
+  function lostPeer(){
+    if(net.closing)return;
+    const was=net.on,pending=!!(net.peer||net.pc);net.closing=true;
+    try{closeNet()}finally{net.closing=false}
+    if(!was){if(pending)netStatus('اتصال قطع شد یا برقرار نشد؛ اینترنت را بررسی کنید و دوباره امتحان کنید.');return}
+    net.on=false;finished=true;
+    ['country','difficulty'].forEach(i=>{$(i).disabled=false});
+    message('ارتباط با حریف قطع شد. «نبرد جدید» را بزنید تا با ربات بازی کنید.');log('ارتباط قطع شد.');render();
+  }
+  function newPeer(){
+    closeNet();
+    const pc=new RTCPeerConnection({iceServers:[]});
+    net.pc=pc;
+    pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState))lostPeer()};
+    return pc;
+  }
+  const gathered=pc=>new Promise(res=>{
+    if(pc.iceGatheringState==='complete')return res();
+    const chk=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',chk);res()}};
+    pc.addEventListener('icegatheringstatechange',chk);setTimeout(res,3500);
+  });
+  function bindChannel(ch){
+    net.ch=ch;
+    ch.onopen=()=>{netStatus('وصل شد! بازی در حال شروع است…');hello()};
+    ch.onmessage=e=>{net.rx=Date.now();let m;try{m=JSON.parse(e.data)}catch{return}if(m&&typeof m==='object')onNet(m)};
+    ch.onclose=lostPeer;
+  }
+  function showCode(pc){
+    const c=encode(pc.localDescription);$('net-out').value=c;
+    if(c.split('|').length<(pc.localDescription.type==='offer'?5:4)){netStatus('آدرسی پیدا نشد؛ مطمئن شوید گوشی به هات‌اسپات یا وای‌فای وصل است و دوباره امتحان کنید.');return false}
+    return true;
+  }
+  async function hostStart(){
+    if(!OFFLINE_ENABLED){netStatus(offlineOff);return}
+    if(!window.RTCPeerConnection){netStatus('این مرورگر از اتصال مستقیم پشتیبانی نمی‌کند.');return}
+    try{
+      net.host=true;const pc=newPeer();bindChannel(pc.createDataChannel('game'));
+      await pc.setLocalDescription(await pc.createOffer());
+      netStatus('در حال ساخت کد…');await gathered(pc);
+      if(!showCode(pc))return;
+      netStatus('کد بالا را برای دوستتان بفرستید؛ بعد کد پاسخ او را در کادر پایین بچسبانید و «اتصال» بزنید.');
+    }catch{netStatus('ساخت بازی انجام نشد. دوباره تلاش کنید.')}
+  }
+  async function hostFinish(){
+    if(!OFFLINE_ENABLED){netStatus(offlineOff);return}
+    const t=$('net-in').value.trim();
+    if(!net.pc||!net.host){netStatus('ابتدا «ساخت بازی» را بزنید.');return}
+    if(!t){netStatus('ابتدا کد پاسخ دوستتان را بچسبانید.');return}
+    if(!t.startsWith('a|')){netStatus('این کد پاسخ نیست؛ کدی را بچسبانید که نفر دوم ساخته است.');return}
+    try{await net.pc.setRemoteDescription(decode(t));netStatus('در حال اتصال…')}catch{netStatus('کد پاسخ معتبر نیست.')}
+  }
+  async function guestJoin(){
+    if(!OFFLINE_ENABLED){netStatus(offlineOff);return}
+    const t=$('net-in').value.trim();
+    if(!window.RTCPeerConnection){netStatus('این مرورگر از اتصال مستقیم پشتیبانی نمی‌کند.');return}
+    if(!t){netStatus('ابتدا کد نفر اول را بچسبانید.');return}
+    if(!t.startsWith('o|')){netStatus('این کد نفر اول نیست؛ کدی را بچسبانید که با «ساخت بازی دستی» ساخته شده.');return}
+    try{
+      net.host=false;const pc=newPeer();pc.ondatachannel=e=>bindChannel(e.channel);
+      await pc.setRemoteDescription(decode(t));
+      await pc.setLocalDescription(await pc.createAnswer());
+      netStatus('در حال ساخت کد پاسخ…');await gathered(pc);
+      if(!showCode(pc))return;
+      netStatus('کد پاسخ بالا را برای نفر اول بفرستید و منتظر بمانید.');
+    }catch{netStatus('کد معتبر نیست.')}
+  }
+  const myName=()=>($('net-name').value.trim()||'بازیکن').slice(0,16);
+  const hello=()=>send({t:'hello',country,id:playerId,name:myName(),lvl:lvlOf(xp)});
+  // ضربان: اگر حریف ۲۰ ثانیه پاسخ ندهد ارتباط قطع‌شده حساب می‌شود (وقتی صفحه پنهان است حساب نمی‌شود)
+  function startHeartbeat(){
+    clearInterval(net.hb);net.rx=Date.now();
+    net.hb=setInterval(()=>{
+      if(!net.on){clearInterval(net.hb);return}
+      send({t:'ping'});
+      if(!document.hidden&&Date.now()-net.rx>20000){log('حریف پاسخ نمی‌دهد.');lostPeer()}
+    },3000);
+  }
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)net.rx=Date.now()});
+  function startPvp(){
+    net.on=true;net.phase='setup';net.ready=false;net.peerReady=false;net.myTurn=false;net.rm=false;net.prm=false;tool=null;net.waiting=false;clearInterval(net.timer);startHeartbeat();
+    ['country','difficulty'].forEach(i=>{$(i).disabled=true});
+    resources=startResources();seed();
+    enemy=blank();enemyCountry=net.peerCountry;
+    $('net-panel').hidden=true;
+    const ec=countries[enemyCountry];
+    message(`بازی دو نفره شروع شد؛ حریف شما ${net.peerName} (${ec.flag} ${ec.name}). مرحلهٔ چیدمان: ساختمان‌هایتان را بسازید و بعد «آماده‌ام» را بزنید.`);
+    log(`بازی دو نفره با ${ec.name} آغاز شد (بدون ربات).`);render();
+  }
+  function rematch(){
+    if(!finished){message('در بازی دو نفره تا پایان نبرد نمی‌شود از نو شروع کرد.');return}
+    net.rm=true;send({t:'rematch'});
+    if(net.prm)startPvp();else{message('منتظر تأیید حریف برای نبرد جدید…');toast('منتظر تأیید حریف…')}
+  }
+  function onNet(m){
+    if(m.t==='hello'){if(net.on)return;net.peerCountry=has(countries,m.country)?m.country:'usa';net.peerName=String(m.name||'حریف').slice(0,16);net.peerLvl=Math.max(1,Math.min(999,Math.floor(Number(m.lvl))||1));startPvp();return}
+    if(!net.on)return;
+    if(m.t==='atk')netDefend(m);
+    else if(m.t==='res')netResult(m);
+    else if(m.t==='scout')revealFor(m.n);
+    else if(m.t==='scoutR')applyScout(m.cells);
+    else if(m.t==='forfeit'&&!finished){log('حریف تسلیم شد یا منابعش تمام شد.');finish(true)}
+    else if(m.t==='rematch'){net.prm=true;toast('حریف نبرد جدید می‌خواهد.');if(net.rm)startPvp()}
+    else if(m.t==='ready'){net.peerReady=true;toast('حریف آماده است.');checkStart()}
+    else if(m.t==='skip'&&net.phase==='play'&&!finished){log('حریف نوبتش را از دست داد.');beginMyTurn('حریف زمانش را از دست داد؛ نوبت شماست.')}
+    else if(m.t==='chat')toast('💬 '+String(m.x).slice(0,12));
+  }
+  function netAttack(index,w){
+    net.last=w;net.myTurn=false;net.waiting=true;clearInterval(net.timer);
+    send({t:'atk',i:index,hits:robotHits,w:{kind:w.kind,name:w.name,dmg:w.dmg,splash:w.splash,width:w.width,redirect:w.redirect,reveal:w.reveal}});
+    message('حمله فرستاده شد؛ منتظر نتیجه…');render();
+  }
+  function netDefend(m){
+    const mw=m.w||{},cl=(v,a,b)=>Math.max(a,Math.min(b,Math.floor(Number(v))||a));
+    const w={kind:KINDS.includes(mw.kind)?mw.kind:'mortar',name:String(mw.name||'سلاح').slice(0,30),dmg:cl(mw.dmg,1,2),splash:cl(mw.splash,0,4),width:cl(mw.width,1,5),redirect:cl(mw.redirect,1,3),reveal:0};
+    if(w.width%2===0)w.width--;
+    const i=Number(m.i);if(!Number.isInteger(i)||i<0||i>=COUNT||finished||net.phase!=='play')return;
+    playerHits=cl(m.hits,0,COUNT);
+    flash.own.clear();flash.enemy.clear();
+    let r;
+    if(intercepted(own,w)){
+      r={ev:[],int:1};log(`پدافند هوایی شما حملهٔ ${w.name} حریف را رد کرد.`);sfx('block');
+    }else{
+      const res=fire(own,w,i);robotHits+=res.dmg;
+      r={ev:res.events.map(e=>({i:e.index,type:e.destroyed?e.type:null,b:e.blocked,d:e.dmg,x:e.destroyed}))};
+      sfx(res.events.some(e=>e.destroyed)?'boom':res.dmg?'hit':'miss');
+      log(`حریف با ${w.name} به ${location(i)} حمله کرد: ${res.events.map(eventText).join('؛ ')}.${res.note}`);
+    }
+    r.t='res';r.hits=robotHits;r.over=robotHits>=8;send(r);
+    if(r.over){finish(false);return}
+    beginMyTurn();
+  }
+  const turnText=()=>finished?'🏁 نبرد تمام شد':net.phase==='setup'?(net.ready?'⏳ منتظر آمادگی حریف':'🛠️ مرحلهٔ چیدمان'):net.myTurn?`🟢 نوبت شماست (${fa(net.left)} ثانیه)`:'🔴 نوبت حریف';
+  function beginMyTurn(note){
+    net.myTurn=true;turn++;
+    if(stuck()){send({t:'forfeit'});log('منابع و درآمد شما تمام شد و سلاحی ندارید؛ باختید.');finish(false);return}
+    message(note||'نوبت شماست. حمله کنید، بسازید یا چینش را عوض کنید.');render();
+    clearInterval(net.timer);net.left=60;
+    net.timer=setInterval(()=>{
+      if(!net.on||finished||!net.myTurn){clearInterval(net.timer);return}
+      net.left--;$('net-turn').textContent=turnText();
+      if(net.left<=0){
+        clearInterval(net.timer);net.myTurn=false;send({t:'skip'});
+        log('زمان نوبت شما تمام شد.');endOfTurn();message('زمان نوبتتان تمام شد؛ نوبت حریف است.');render();
+      }
+    },1000);
+  }
+  function checkStart(){
+    if(net.phase==='setup'&&net.ready&&net.peerReady){
+      net.phase='play';log('هر دو آماده‌اند؛ نبرد شروع شد.');say(0);
+      if(net.host)beginMyTurn('نبرد شروع شد؛ شما اول حمله می‌کنید.');
+      else{message('نبرد شروع شد؛ حریف اول حمله می‌کند.');render()}
+    }else render();
+  }
+  $('net-ready').addEventListener('click',()=>{
+    if(net.phase!=='setup'||net.ready)return;
+    if(!own.some(c=>c.type)){message('ابتدا حداقل یک ساختمان بسازید.');return}
+    net.ready=true;send({t:'ready'});message('آماده‌اید؛ منتظر حریف…');checkStart();
+  });
+  function netResult(m){
+    if(!net.waiting)return;net.waiting=false;
+    const w=net.last||{name:'سلاح',kind:'mortar'},ev=Array.isArray(m.ev)?m.ev:[];
+    flash.own.clear();flash.enemy.clear();
+    playerHits=Math.max(0,Math.min(COUNT,Number(m.hits)||0));
+    if(m.int){log(`پدافند حریف حملهٔ ${w.name} شما را رد کرد (هزینه از دست رفت).`);sfx('block')}
+    else{
+      ev.forEach(e=>{
+        const c=enemy[e.i];if(!c)return;
+        c.attacked=true;c.blocked=!!e.b;
+        if(c.type)c.hp=Math.max(0,c.hp-(e.d||0));
+        if(e.x&&buildings[e.type]){c.type=e.type;c.max=buildings[e.type].hp;c.hp=0}
+        flash.enemy.add(e.i);
+      });
+      const gone=ev.filter(e=>e.x&&buildings[e.type]),dmg=ev.reduce((a,e)=>a+(e.d||0),0);award(dmg,gone.length);
+      sfx(gone.length?'boom':dmg?'hit':'miss');
+      log(`شما با ${w.name} حمله کردید — ${fa(ev.length)} خانه هدف گرفته شد؛ ${dmg?fa(dmg)+' آسیب وارد شد. ':'آسیبی وارد نشد. '}${gone.length?'تخریب شد: '+gone.map(e=>buildings[e.type].name+' در '+location(e.i)).join('، ')+'.':'ساختمانی تخریب نشد.'}`);
+      if(w.kind==='ew')send({t:'scout',n:w.reveal});
+    }
+    if(m.over){finish(true);return}
+    endOfTurn();
+    message('نوبت حریف است؛ منتظر حمله‌اش باشید.');render();
+  }
+  function revealFor(n){
+    const c=own.map((x,i)=>({x,i})).filter(o=>o.x.type&&o.x.hp>0&&!o.x.attacked),out=[];
+    for(let k=0;k<Math.min(3,Number(n)||0)&&c.length;k++){
+      const o=c.splice(random(c.length),1)[0];
+      out.push({i:o.i,type:o.x.type,hp:o.x.hp,max:o.x.max||buildings[o.x.type].hp});
+    }
+    send({t:'scoutR',cells:out});
+  }
+  function applyScout(cells){
+    let k=0;
+    (Array.isArray(cells)?cells:[]).forEach(e=>{
+      const c=enemy[e.i];
+      if(c&&!c.attacked&&buildings[e.type]){c.type=e.type;c.hp=Number(e.hp)||1;c.max=Number(e.max)||c.hp;c.scouted=true;k++}
+    });
+    if(k){log(`شناسایی: ${fa(k)} ساختمان حریف آشکار شد.`);render()}
+  }
+  ['👍','😂','🔥','⏳','🤝'].forEach(x=>{
+    const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=x;
+    b.addEventListener('click',()=>send({t:'chat',x}));$('net-chat').appendChild(b);
+  });
+  const PVP_ENABLED=false; // بخش دو نفره موقتاً متوقف است
+  $('net-panel').hidden=true;
+  $('net-button').addEventListener('click',()=>{
+    if(!PVP_ENABLED){message('بخش دو نفره موقتاً متوقف است و به‌زودی برمی‌گردد.');toast('🤝 بخش دو نفره — درحال ساخت');$('net-panel').hidden=true;return}
+    const p=$('net-panel');p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  $('net-close').addEventListener('click',()=>{$('net-panel').hidden=true});
+  $('net-host').addEventListener('click',hostStart);
+  $('net-connect').addEventListener('click',hostFinish);
+  $('net-join').addEventListener('click',guestJoin);
+  $('net-leave').addEventListener('click',lostPeer);
+  $('net-copy').addEventListener('click',async()=>{
+    const t=$('net-out').value;if(!t){netStatus('هنوز کدی ساخته نشده است.');return}
+    try{await navigator.clipboard.writeText(t);netStatus('کد کپی شد.')}catch{$('net-out').select();netStatus('کد انتخاب شد؛ دستی کپی کنید.')}
+  });
+
+  // ===== اتصال با کد چهار رقمی (PeerJS) =====
+  const PEER_SRC=['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js','https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'];
+  const loadOne=src=>new Promise((res,rej)=>{
+    const t=document.createElement('script'),to=setTimeout(()=>{t.remove();rej()},8000);
+    t.src=src;t.onload=()=>{clearTimeout(to);window.Peer?res():rej()};t.onerror=()=>{clearTimeout(to);rej()};document.head.appendChild(t);
+  });
+  async function loadPeer(){
+    for(const src of PEER_SRC){if(window.Peer)return true;try{await loadOne(src)}catch{}}
+    return !!window.Peer;
+  }
+  const noNet='سرویس اتصال در دسترس نیست؛ اینترنت را بررسی کنید و دوباره تلاش کنید، یا از بخش «بدون اینترنت» پایین همین پنل استفاده کنید.';
+  function netFail(t){netStatus(t);const d=$('net-details');if(d)d.open=true}
+  function watchOpen(peer){
+    setTimeout(()=>{if(net.peer===peer&&!peer.open&&!net.on)netFail(noNet)},12000);
+  }
+  const PEER_OPT={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:openrelay.metered.ca:80'},
+    {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
+  const ONLINE_ENABLED=true,OFFLINE_ENABLED=true;
+  const offlineOff='بخش بدون اینترنت موقتاً غیرفعال است.',onlineOff='بازی آنلاین موقتاً غیرفعال است.';
+  ['net-code-host','net-code-join','net-code-in'].forEach(i=>{$(i).disabled=!ONLINE_ENABLED});
+  ['net-host','net-connect','net-join','net-copy'].forEach(i=>{$(i).disabled=!OFFLINE_ENABLED});
+  function bindConn(c){
+    const old=net.ch;net.ch=null;if(old&&!net.on)old.close();   // اتصال ناتمامِ قبلی را ببند (بدون خراب‌کردن اتصال تازه)
+    const mine={_c:c,get readyState(){return c.open?'open':'closed'},send:t=>c.send(t),close:()=>{try{c.close()}catch{}}};
+    net.ch=mine;
+    const cur=()=>net.ch===mine;
+    c.on('open',()=>{if(!cur())return;netStatus('وصل شد! بازی در حال شروع است…');hello()});
+    c.on('data',d=>{if(!cur())return;net.rx=Date.now();let m;try{m=JSON.parse(d)}catch{return}if(m&&typeof m==='object')onNet(m)});
+    c.on('close',()=>{if(cur())lostPeer()});
+    c.on('error',()=>{if(cur()&&!net.on)netFail('ارتباط مستقیم دو گوشی برقرار نشد.')});
+    c.on('iceStateChanged',st=>{
+      if(!cur()||net.on)return;
+      if(st==='failed')netFail('ارتباط مستقیم دو گوشی برقرار نشد (NAT یا فیلتر مانع است). از بخش «بدون اینترنت» استفاده کنید.');
+      else if(st==='checking')netStatus('در حال یافتن مسیر ارتباط…');
+    });
+  }
+  async function codeHost(tries=0){
+    if(!ONLINE_ENABLED){netStatus(onlineOff);return}
+    netStatus('در حال اتصال به سرویس…');$('net-code').textContent='----';
+    if(!await loadPeer()){netFail(noNet);return}
+    closeNet();net.host=true;
+    const code=String(10000+random(90000)),peer=new Peer('jangmodernwar'+code,PEER_OPT);net.peer=peer;watchOpen(peer);
+    peer.on('disconnected',()=>{try{if(net.peer===peer&&!peer.destroyed)peer.reconnect()}catch{}});
+    peer.on('open',()=>{$('net-code').textContent=code;netStatus('این کد را به دوستتان بگویید و منتظر بمانید…')});
+    peer.on('connection',c=>{if(net.on){c.close();return}bindConn(c)});
+    peer.on('error',e=>{if(e.type==='unavailable-id'&&tries<5)codeHost(tries+1);else if(!net.on)netFail('اتصال به سرویس انجام نشد ('+e.type+'). '+noNet)});
+  }
+  async function codeJoin(){
+    if(!ONLINE_ENABLED){netStatus(onlineOff);return}
+    const code=$('net-code-in').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^0-9]/g,'');
+    if(code.length!==5){netStatus('کد باید پنج رقم باشد.');return}
+    netStatus('در حال اتصال به سرویس…');
+    if(!await loadPeer()){netFail(noNet);return}
+    closeNet();net.host=false;
+    const peer=new Peer(undefined,PEER_OPT);net.peer=peer;watchOpen(peer);
+    peer.on('open',()=>{netStatus('در حال اتصال…');{const c=peer.connect('jangmodernwar'+code,{serialization:'json'});bindConn(c);setTimeout(()=>{if(net.peer===peer&&!c.open&&!net.on)netFail('پاسخی از بازی نیامد؛ کد را بررسی کنید و دوباره تلاش کنید. اگر کد درست است، ارتباط مستقیم دو گوشی بسته است؛ از بخش «بدون اینترنت» استفاده کنید.')},30000)}});
+    peer.on('error',e=>{if(net.on)return;if(e.type==='peer-unavailable')netStatus('بازی‌ای با این کد پیدا نشد.');else netFail('اتصال انجام نشد ('+e.type+'). '+noNet)});
+  }
+  try{$('net-name').value=localStorage.getItem('jm-name')||''}catch{}
+  $('net-name').addEventListener('input',()=>{try{localStorage.setItem('jm-name',$('net-name').value)}catch{}});
+  $('net-code-host').addEventListener('click',()=>codeHost());
+  $('net-code-join').addEventListener('click',codeJoin);
+  $('surrender-button').addEventListener('click',()=>{
+    if(finished){message('نبرد تمام شده است.');return}
+    if(!confirm('مطمئنید تسلیم می‌شوید؟'))return;
+    if(net.on)send({t:'forfeit'});
+    log('شما تسلیم شدید.');finish(false);
+  });
+  $('reset-records').addEventListener('click',()=>{
+    if(!confirm('همهٔ رکوردها و دستاوردها پاک شود؟'))return;
+    record={wins:0,losses:0,best:0,ach:[]};
+    try{['jm-record','jm-best','jm-wins','jm-ach'].forEach(k=>localStorage.removeItem(k))}catch{}
+    message('رکوردها پاک شد.');render();
+  });
+
+  // ===== سطح، شهروندان، هدیه، ساعت، افکت‌ها =====
+  const GIFT_KEYS=['gold','wood','stone','metal','fuel'];
+  const lvlOf=x=>1+Math.floor(Math.sqrt(x/60));
+  function levelText(){
+    const L=lvlOf(xp),lo=60*(L-1)**2,hi=60*L*L,p=Math.max(0,Math.min(8,Math.round((xp-lo)/(hi-lo)*8)));
+    return `⭐ سطح ${fa(L)} · ${'▰'.repeat(p)}${'▱'.repeat(8-p)} ${fa(xp-lo)}/${fa(hi-lo)} تجربه`;
+  }
+  function gainXp(n){
+    const before=lvlOf(xp);xp+=Math.max(0,Math.floor(n)||0);
+    try{localStorage.setItem('jm-xp',String(xp))}catch{}
+    const after=lvlOf(xp);
+    if(after>before){
+      const k=after-before;GIFT_KEYS.forEach(r=>{resources[r]+=(r==='gold'?100:50)*k});
+      sfx('levelup');toast(`⭐ سطح ${fa(after)}! جایزه: ${fa(100*k)} طلا و ${fa(50*k)} از هر منبع دیگر`);
+      log(`ارتقا به سطح ${fa(after)}.`);burst($('level-info'),['⭐','✨','🎉']);
+    }
+  }
+  const award=(dmg,gone)=>gainXp(dmg*8+gone*25);
+  // شهروندان: هر ساختمان پررفت‌وآمد ظرفیتی دارد و با آسیب‌دیدن کم می‌شود (فقط جمعیت خودتان دیده می‌شود)
+  const population=()=>Math.round(own.reduce((a,c)=>a+(c.type&&c.hp>0&&POP[c.type]?POP[c.type]*Math.min(1,c.hp/(c.max||buildings[c.type].hp)):0),0));
+  // ساعت و تاریخ کشور
+  const TZ={iran:['Asia/Tehran','fa-IR-u-ca-persian'],usa:['America/New_York','fa-IR-u-ca-gregory'],russia:['Europe/Moscow','fa-IR-u-ca-gregory'],china:['Asia/Shanghai','fa-IR-u-ca-gregory'],turkey:['Europe/Istanbul','fa-IR-u-ca-gregory'],uk:['Europe/London','fa-IR-u-ca-gregory']};
+  function tickClock(){
+    try{
+      const [z,l]=TZ[country]||TZ.iran;
+      $('country-clock').textContent=`🕒 ${countries[country].flag} ${new Intl.DateTimeFormat(l,{timeZone:z,dateStyle:'full',timeStyle:'medium'}).format(new Date())}`;
+    }catch{}
+  }
+  tickClock();setInterval(tickClock,1000);
+  // افکت‌های گرافیکی
+  const fxSeen=new Set();
+  function burst(el,list){
+    try{
+      const r=el.getBoundingClientRect();
+      for(let k=0;k<8;k++){
+        const p=document.createElement('span'),a=Math.random()*6.28,d=30+Math.random()*50;
+        p.className='pfx';p.textContent=list[k%list.length];
+        p.style.left=(r.left+r.width/2)+'px';p.style.top=(r.top+r.height/2)+'px';
+        p.style.setProperty('--dx',Math.cos(a)*d+'px');p.style.setProperty('--dy',Math.sin(a)*d+'px');
+        document.body.appendChild(p);setTimeout(()=>p.remove(),950);
+      }
+    }catch{}
+  }
+  function shake(id){try{const e=$(id);e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake');setTimeout(()=>e.classList.remove('shake'),500)}catch{}}
+  function runFx(){
+    if(!flash.own.size&&!flash.enemy.size){fxSeen.clear();return}
+    [['own','player-board',own],['enemy','enemy-board',enemy]].forEach(([k,id,b])=>{
+      let boom=false;
+      flash[k].forEach(i=>{
+        const key=k+i;if(fxSeen.has(key))return;fxSeen.add(key);
+        const c=b[i],el=$(id).children[i];if(!c||!el)return;
+        if(c.type&&c.hp<=0){boom=true;burst(el,['💥','🔥','💨'])}
+        else if(c.type&&c.attacked&&(k==='own'||c.scouted))burst(el,['💢','✨']);
+      });
+      if(boom){shake(id);try{navigator.vibrate&&navigator.vibrate(k==='own'?[80,40,80]:50)}catch{}}
+    });
+  }
+  // هدیه دادن منابع با کد کاربر (بدون سرور؛ کد هدیه را خودتان می‌فرستید)
+  const gHash=t=>{let h=5381;for(const ch of t)h=((h<<5)+h+ch.charCodeAt(0))>>>0;return h.toString(36)};
+  const usedGifts=()=>{try{const a=JSON.parse(localStorage.getItem('jm-gifts')||'[]');return Array.isArray(a)?a:[]}catch{return[]}};
+  const giftMsg=t=>{$('gift-status').textContent=t};
+  const faDig=t=>t.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  $('gift-button').addEventListener('click',()=>{const p=$('gift-panel');p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:'smooth',block:'start'})});
+  $('gift-close').addEventListener('click',()=>{$('gift-panel').hidden=true});
+  $('gift-make').addEventListener('click',()=>{
+    const to=$('gift-to').value.trim().toUpperCase();
+    if(!/^JM-[A-Z0-9]{6,}$/.test(to)){giftMsg('کد کاربر گیرنده معتبر نیست (مثل JM-1A2B3C4D).');return}
+    if(to===playerId){giftMsg('نمی‌توانید به خودتان هدیه بدهید.');return}
+    const amts=GIFT_KEYS.map(k=>Math.floor(Number(faDig($('gift-'+k).value))||0));
+    if(!amts.some(a=>a>0)){giftMsg('حداقل یک واحد را پر کنید.');return}
+    for(let i=0;i<5;i++){
+      if(amts[i]<0||(amts[i]>0&&amts[i]<100)){giftMsg(`هر واحد باید حداقل ۱۰۰ باشد (${resourceNames[GIFT_KEYS[i]]}).`);return}
+      if(amts[i]>resources[GIFT_KEYS[i]]){giftMsg(`${resourceNames[GIFT_KEYS[i]]} کافی ندارید.`);return}
+    }
+    GIFT_KEYS.forEach((k,i)=>{resources[k]-=amts[i]});
+    const payload=`${to}|${amts.join(',')}|${Date.now().toString(36)}${random(1e6).toString(36)}`;
+    $('gift-code').value=btoa(payload+'|'+gHash(payload+'jm-gift'));
+    log(`هدیه‌ای به ${to} ساخته شد.`);sfx('gift');giftMsg('کد هدیه ساخته شد؛ آن را برای دوستتان بفرستید.');render();
+  });
+  $('gift-redeem').addEventListener('click',()=>{
+    try{
+      const parts=atob($('gift-in').value.replace(/\s+/g,'')).split('|');
+      if(parts.length!==4)throw 0;
+      const [to,a,nonce,chk]=parts,payload=`${to}|${a}|${nonce}`;
+      if(gHash(payload+'jm-gift')!==chk)throw 0;
+      if(to!==playerId){giftMsg('این هدیه برای کد کاربر دیگری ساخته شده است.');return}
+      if(usedGifts().includes(nonce)){giftMsg('این هدیه قبلاً دریافت شده است.');return}
+      const amts=a.split(',').map(Number);
+      if(amts.length!==5||amts.some(x=>!Number.isFinite(x)||x<0||x>1e6))throw 0;
+      GIFT_KEYS.forEach((k,i)=>{resources[k]+=amts[i]});
+      try{localStorage.setItem('jm-gifts',JSON.stringify([...usedGifts(),nonce].slice(-200)))}catch{}
+      sfx('gift');burst($('gift-redeem'),['🎁','✨','🪙']);
+      giftMsg('هدیه دریافت شد: '+GIFT_KEYS.map((k,i)=>amts[i]?`${resourceNames[k]} ${fa(amts[i])}`:'').filter(Boolean).join(' · '));
+      log('هدیه‌ای دریافت شد.');$('gift-in').value='';render();
+    }catch{giftMsg('کد هدیه معتبر نیست.')}
+  });
+  $('gift-copy').addEventListener('click',async()=>{
+    const t=$('gift-code').value;if(!t){giftMsg('هنوز کدی ساخته نشده است.');return}
+    try{await navigator.clipboard.writeText(t);giftMsg('کد هدیه کپی شد.')}catch{$('gift-code').select();giftMsg('کد انتخاب شد؛ دستی کپی کنید.')}
+  });
+
+  // موتور موسیقی: ملودی + بیس + درام، با زمان‌بندی دقیق Web Audio و اکوی ملایم
+  const N=s=>[...s].map(c=>c==='x');
+  const tracks=[
+    {name:'مارش فرماندهی',bpm:104,wave:'sawtooth',cut:1800,len:1.6,bl:1.8,
+     bass:[38,0,0,0,38,0,0,0,41,0,0,0,43,0,0,0],
+     mel:[62,0,0,65,0,62,0,0,69,0,67,0,65,0,62,0,62,0,0,65,0,62,0,0,70,0,69,0,67,0,65,0],
+     kick:N('x...x...x...x...'),snare:N('....x.......x...'),hat:N('..x...x...x...x.')},
+    {name:'نبض میدان',bpm:128,wave:'square',cut:1400,len:.9,bl:1.5,
+     bass:[33,0,33,0,33,0,36,0,33,0,33,0,31,0,31,0],
+     mel:[69,0,72,0,76,0,72,0,69,0,67,0,64,0,67,0,69,0,72,0,76,0,79,0,76,0,72,0,69,0,0,0],
+     kick:N('x...x...x...x...'),snare:N('....x.......x...'),hat:N('.x.x.x.x.x.x.x.x')},
+    {name:'طلوع عملیات',bpm:90,wave:'triangle',cut:3000,len:3,bl:7,
+     bass:[40,0,0,0,0,0,0,0,47,0,0,0,0,0,0,0],
+     mel:[64,0,0,0,67,0,0,0,71,0,0,0,69,0,67,0,66,0,0,0,69,0,0,0,71,0,74,0,71,0,0,0],
+     kick:N('x.......x.......'),snare:N('........x.......'),hat:N('..x...x...x...x.')},
+    {name:'خط مقدم',bpm:140,wave:'sawtooth',cut:2200,len:.8,bl:1.2,
+     bass:[36,36,0,36,36,0,36,0,34,34,0,34,34,0,34,0],
+     mel:[72,0,75,0,79,0,75,0,72,0,70,0,67,0,70,0,72,0,75,0,79,0,82,0,79,0,75,0,72,0,0,0],
+     kick:N('x..x..x.x..x..x.'),snare:N('....x.......x..x'),hat:N('xxxxxxxxxxxxxxxx')},
+    {name:'نگهبان شب',bpm:72,wave:'sine',cut:2500,len:4,bl:8,
+     bass:[41,0,0,0,0,0,0,0,39,0,0,0,0,0,0,0],
+     mel:[65,0,0,0,68,0,0,0,72,0,0,0,70,0,68,0,63,0,0,0,67,0,0,0,70,0,0,0,68,0,0,0],
+     kick:N('x.......x.......'),snare:N('................'),hat:N('..............x.')}
+  ];
+  let audio=null,master=null,bus=null,noiseBuf=null,timer=null,trackIndex=0,step=0,nextTime=0,volume=.6,paused=false;
+  const mtof=m=>440*2**((m-69)/12);
+  // آهنگ هر کشور: گام و نام قطعه به زبان همان کشور (ملودی‌ها ساختگی و اصیل‌اند، نه ضبط آهنگ واقعی)
+  const SCALES={iran:[0,1.5,3,5,7,8,10],usa:[0,3,5,6,7,10],russia:[0,2,3,5,7,8,11],china:[0,2,4,7,9],turkey:[0,1,4,5,7,8,10],uk:[0,2,3,5,7,9,10],germany:[0,2,4,5,7,9,11],japan:[0,2,5,7,9],france:[0,2,4,5,7,9,10],india:[0,1,4,5,8,9],brazil:[0,2,3,7,9]};
+  const SONGS={
+    iran:[['مارش پیروزی',104,'sawtooth'],['حماسهٔ میهن',92,'triangle'],['شب‌های کویر',76,'sine']],
+    usa:[['Eagle March',108,'sawtooth'],['Frontier Blues',88,'triangle'],['Midnight Patrol',74,'sine']],
+    russia:[['Стальной марш',100,'sawtooth'],['Северный ветер',84,'triangle'],['Полночный дозор',72,'sine']],
+    china:[['钢铁长城',100,'square'],['长江之夜',80,'triangle'],['东方破晓',70,'sine']],
+    turkey:[['Kahramanlar Marşı',112,'sawtooth'],['Boğaz Gecesi',86,'triangle'],['Anadolu Fırtınası',120,'square']],
+    uk:[['Redcoat March · choir',104,'sawtooth'],['Highland Mist · vocal',82,'triangle'],['Thames Watch · chorus',72,'sine']],
+    germany:[['Stimmen des Sieges',106,'sawtooth'],['Nachtchor',84,'triangle'],['Morgenlied',74,'sine']],
+    japan:[['勝利の歌声',102,'sawtooth'],['夜明けの合唱',82,'triangle'],['鋼の心',72,'sine']],
+    france:[['Chant de victoire',104,'sawtooth'],['Voix de minuit',84,'triangle'],['Aube nouvelle',74,'sine']],
+    india:[['विजय गीत',108,'sawtooth'],['रात की आवाज़',86,'triangle'],['नई सुबह',76,'sine']],
+    brazil:[['Canto da vitória',110,'sawtooth'],['Vozes da noite',88,'triangle'],['Novo amanhecer',78,'sine']]
+  };
+  const PATS=[[0,-1,2,-1,4,-1,2,-1,3,-1,2,-1,1,-1,0,-1,0,-1,2,-1,4,-1,6,-1,5,-1,4,-1,2,-1,0,-1],
+              [0,-1,-1,-1,2,-1,-1,-1,4,-1,-1,-1,3,-1,2,-1,1,-1,-1,-1,3,-1,-1,-1,5,-1,4,-1,3,-1,-1,-1],
+              [4,-1,-1,-1,3,-1,-1,-1,2,-1,-1,-1,1,-1,-1,-1,0,-1,-1,-1,2,-1,-1,-1,1,-1,-1,-1,0,-1,-1,-1]];
+  function musicFor(c){
+    const sc=SCALES[c]||SCALES.iran;
+    return (SONGS[c]||SONGS.iran).map(([name,bpm,wave],i)=>{
+      const r=[62,57,60][i];
+      return {name,bpm,wave,cut:2200,len:i?2.4:1.4,bl:i?5:1.8,
+        bass:[r-24,0,0,0,r-24,0,0,0,r-17,0,0,0,r-19,0,0,0],
+        mel:PATS[i].map(d=>d<0?0:r+sc[d%sc.length]+12*Math.floor(d/sc.length)),
+        kick:N(i===2?'x.......x.......':'x...x...x...x...'),snare:N(i===2?'................':'....x.......x...'),hat:N(i?'..x...x...x...x.':'.x.x.x.x.x.x.x.x')};
+    });
+  }
+  let musicCountry=null;
+  function setMusic(){
+    if(musicCountry===country)return;
+    musicCountry=country;tracks.splice(0,tracks.length,...musicFor(country));trackIndex=0;step=0;trackLabel();
+  }
+  const PHR={iran:['fa-IR','نبرد آغاز شد','پیروزی','شکست'],usa:['en-US','Battle begins','Victory','Defeat'],russia:['ru-RU','Бой начался','Победа','Поражение'],china:['zh-CN','战斗开始','胜利','失败'],turkey:['tr-TR','Savaş başladı','Zafer','Yenilgi'],uk:['en-GB','Battle begins','Victory','Defeat']};
+  function say(k){
+    try{
+      if(!sfxOn||!window.speechSynthesis)return;
+      const [l,...t]=PHR[country]||PHR.iran,u=new SpeechSynthesisUtterance(t[k]);
+      u.lang=l;u.volume=.8;speechSynthesis.cancel();speechSynthesis.speak(u);
+    }catch{}
+  }
+  function trackLabel(){
+    $('track-name').textContent=`${timer&&!paused?'♪ ':''}قطعهٔ ${fa(trackIndex+1)} از ${fa(tracks.length)}: ${tracks[trackIndex].name}`;
+  }
+  const VOCALS={iran:['نبرد، امید، پیروزی','با هم تا پایان'],usa:['Rise up, stand strong','We march as one'],russia:['Вперёд к победе','Мы вместе сильны'],china:['向着胜利前进','团结就是力量'],turkey:['Zafere doğru','Birlikte güçlüyüz'],uk:['Rise for victory','Together we stand'],germany:['Gemeinsam zum Sieg','Wir bleiben stark'],japan:['勝利へ進もう','心をひとつに'],france:['Ensemble vers la victoire','Unis et forts'],india:['विजय की ओर चलो','हम साथ हैं'],brazil:['Vamos à vitória','Juntos somos fortes']};
+  function singTrack(){try{if(!window.speechSynthesis)return;const lines=VOCALS[country]||VOCALS.iran;const u=new SpeechSynthesisUtterance(lines[trackIndex%lines.length]);u.lang=({iran:'fa-IR',usa:'en-US',russia:'ru-RU',china:'zh-CN',turkey:'tr-TR',uk:'en-GB',germany:'de-DE',japan:'ja-JP',france:'fr-FR',india:'hi-IN',brazil:'pt-BR'})[country]||'fa-IR';u.rate=.88;u.pitch=1.05;u.volume=volume; speechSynthesis.cancel();speechSynthesis.speak(u)}catch{}}
+  function tone(freq,t,dur,type,vol,dest,cut){
+    const o=audio.createOscillator(),f=audio.createBiquadFilter(),g=audio.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);
+    f.type='lowpass';f.frequency.value=cut;
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(f);f.connect(g);g.connect(dest);o.start(t);o.stop(t+dur+.05);
+  }
+  function noise(t,dur,type,freq,vol){
+    const s=audio.createBufferSource(),f=audio.createBiquadFilter(),g=audio.createGain();
+    s.buffer=noiseBuf;f.type=type;f.frequency.value=freq;
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+dur+.02);
+  }
+  function kick(t){
+    const o=audio.createOscillator(),g=audio.createGain();
+    o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(42,t+.12);
+    g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.0001,t+.2);
+    o.connect(g);g.connect(master);o.start(t);o.stop(t+.22);
+  }
+  function playStep(tr,s,t){
+    const spd=60/tr.bpm/4,i=s%16,m=tr.mel[s%32],b=tr.bass[i];
+    if(m)tone(mtof(m),t,spd*tr.len,tr.wave,.16,bus,tr.cut);
+    if(b)tone(mtof(b),t,spd*tr.bl,'triangle',.3,master,500);
+    if(tr.kick[i])kick(t);
+    if(tr.snare[i])noise(t,.14,'bandpass',1800,.35);
+    if(tr.hat[i])noise(t,.04,'highpass',7000,.12);
+  }
+  function scheduler(){
+    if(!audio)return;
+    const tr=tracks[trackIndex],spd=60/tr.bpm/4;
+    while(nextTime<audio.currentTime+.25){playStep(tr,step,nextTime);nextTime+=spd;step++}
+  }
+  function stopMusic(){
+    if(timer){clearInterval(timer);timer=null}
+    if(audio){const old=audio;audio=null;old.close().catch(()=>{})}
+    paused=false;$('music-play').textContent='پخش';trackLabel();
+  }
+  async function startMusic(){
+    const Context=window.AudioContext||window.webkitAudioContext;
+    if(!Context){message('این مرورگر از پخش موسیقی پشتیبانی نمی‌کند.');return}
+    stopMusic();
+    try{
+      const c=new Context();audio=c;
+      await c.resume();
+      if(audio!==c)return;
+      const tr=tracks[trackIndex];
+      master=c.createGain();master.gain.value=volume;
+      const comp=c.createDynamicsCompressor();master.connect(comp);comp.connect(c.destination);
+      bus=c.createGain();bus.connect(master);
+      const d=c.createDelay(1),fb=c.createGain(),wet=c.createGain();
+      d.delayTime.value=60/tr.bpm*.75;fb.gain.value=.3;wet.gain.value=.3;
+      bus.connect(d);d.connect(fb);fb.connect(d);d.connect(wet);wet.connect(master);
+      noiseBuf=c.createBuffer(1,c.sampleRate/2,c.sampleRate);
+      const data=noiseBuf.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
+      step=0;nextTime=c.currentTime+.05;paused=false;
+      timer=setInterval(scheduler,25);
+      $('music-play').textContent='مکث';
+      trackLabel();message('موسیقی در حال پخش است.');
+    }catch{stopMusic();message('پخش موسیقی فعال نشد. دوباره «پخش» را بزنید.')}
+  }
+  function togglePlay(){
+    singTrack();
+    if(!audio){startMusic();return}
+    if(paused){audio.resume();paused=false;$('music-play').textContent='مکث';message('پخش ادامه یافت.')}
+    else{audio.suspend();paused=true;$('music-play').textContent='ادامه';message('موسیقی مکث شد.')}
+    trackLabel();
+  }
+  function changeTrack(direction){
+    trackIndex=(trackIndex+direction+tracks.length)%tracks.length;
+    if(timer)startMusic();else trackLabel();
+  }
+  $('music-play').addEventListener('click',togglePlay);
+  $('music-stop').addEventListener('click',()=>{stopMusic();message('موسیقی متوقف شد.')});
+  $('music-next').addEventListener('click',()=>changeTrack(1));
+  $('music-prev').addEventListener('click',()=>changeTrack(-1));
+  $('music-volume').addEventListener('input',e=>{
+    volume=e.target.value/100;
+    if(master&&audio)master.gain.setTargetAtTime(volume,audio.currentTime,.02);
+  });
+
+  applyWeapons();resources=startResources();
+  document.querySelectorAll('[data-kind]').forEach(addFx);
+  buildWeaponUI();
+  const countrySelect=$('country');
+  Object.entries(countries).forEach(([k,c])=>{
+    const o=document.createElement('option');o.value=k;o.textContent=`${c.flag} ${c.name}`;countrySelect.appendChild(o);
+  });
+  countrySelect.value=country;
+  $('difficulty').addEventListener('change',()=>{
+    const b=hpBonusFor($('difficulty').value);
+    const text=b?`سختی عوض شد (سقف اصابت ${fa(goalFor())}): ساختمان‌های دشمن در «نبرد جدید» ${fa(b)} اچ‌پی اضافه خواهند داشت.`
+      :'سختی عوض شد: ساختمان‌های دشمن اچ‌پی اضافه ندارند.';
+    message(text);log(text);
+  });
+  countrySelect.addEventListener('change',()=>{
+    country=countrySelect.value;applyWeapons();resources=startResources();
+    selected={kind:'weapon',key:firstWeaponKey()};buildWeaponUI();seed();
+    const my=countries[country],ec=countries[enemyCountry];
+    message(`${my.flag} ${my.name} انتخاب شد: ${my.perk}. نبرد جدید با ${ec.flag} ${ec.name} آغاز شد.`);
+    log(`کشور شما ${my.name}، دشمن ${ec.name}.`);
+  });
+  ['repair','upgrade'].forEach(t=>$(t+'-button').addEventListener('click',()=>{
+    if(finished){message('برای ادامه، نبرد جدیدی آغاز کنید.');return}
+    tool=tool===t?null:t;moving=false;moveFrom=null;
+    message(tool?(t==='repair'?'حالت تعمیر: ساختمان آسیب‌دیده را لمس کنید (۱ طلا و ۱ فلز؛ ویران‌شده ۲ طلا و ۲ فلز).'
+      :'حالت ارتقا: ساختمان سالم را لمس کنید (۲ طلا و ۲ سنگ؛ تا ۲ اچ‌پی اضافه).'):'حالت ابزار بسته شد.');
+    render();
+  }));
+  $('help-button').addEventListener('click',()=>{const h=$('help-panel');h.hidden=!h.hidden});
+  $('sfx-toggle').addEventListener('click',()=>{sfxOn=!sfxOn;$('sfx-toggle').textContent=sfxOn?'افکت: روشن':'افکت: خاموش'});
+  $('end-share').addEventListener('click',async()=>{
+    const t=`جنگ مدرن — ${$('end-title').textContent}\n${$('end-stats').textContent}`;
+    try{await navigator.clipboard.writeText(t);message('نتیجه کپی شد.')}catch{message('کپی انجام نشد؛ متن را دستی بنویسید.')}
+  });
+  $('end-close').addEventListener('click',()=>{$('end-modal').hidden=true});
+  $('end-restart').addEventListener('click',()=>{$('restart-button').click()});
+  trackLabel();seed();drawLogs();
+  message('بازی آماده است؛ زمین شما خالی است، ابتدا خانه و کارخانه بسازید. منابع فقط با داشتن خانه (شهروند) و کارخانه (کار) سالم زیاد می‌شوند؛ در غیر این صورت خرج‌ها فقط کم می‌کنند. هر ساختمان و سلاح اثر واقعی دارد (زیر دکمه‌ها نوشته شده)؛ برای دیدن مشخصات، خود ساختمان را لمس کنید.');
+  log('نبرد آماده است.');
+})();
+</script>
+</body>
+</html>
